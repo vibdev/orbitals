@@ -89,3 +89,7 @@ and compare the numbers rather than trusting the code.
 
 Work on a branch in your fork and open a pull request against `vibdev/orbitals`. Say what changed for the
 player, and include the before and after numbers from the listening rig if you touched the sound.
+
+## Licence
+
+[MIT](LICENSE)
