@@ -1,0 +1,1569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbitals: a spirograph music garden</title>
+<style>
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#07060d; color:#e9e6ff;
+    font:12.5px/1.3 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; user-select:none; -webkit-user-select:none; }
+  body.paper { background:#f3ecdc; color:#2b2533; }
+  canvas { position:fixed; inset:0; display:block; touch-action:none; }
+  #over { pointer-events:none; }
+  #art { cursor:crosshair; }
+  #art.grab { cursor:grab; } #art.grabbing { cursor:grabbing; }
+
+  #bar { position:fixed; left:50%; bottom:14px; z-index:5; transform:translateX(-50%); display:flex; flex-wrap:wrap; justify-content:center;
+    align-items:center; gap:6px; padding:7px 9px; max-width:calc(100% - 20px);
+    background:rgba(18,16,30,.7); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.09); border-radius:22px; box-shadow:0 10px 40px rgba(0,0,0,.45); transition:opacity .3s, transform .3s; }
+  body.paper #bar { background:rgba(255,250,240,.82); border-color:rgba(0,0,0,.08); box-shadow:0 8px 30px rgba(80,60,30,.15); }
+  #bar.hidden { opacity:0; transform:translate(-50%,20px); pointer-events:none; }
+  button, select { font:inherit; color:inherit; background:rgba(127,120,200,.14); border:1px solid rgba(127,120,200,.22);
+    border-radius:999px; padding:5px 11px; cursor:pointer; }
+  button:hover, select:hover { background:rgba(139,125,255,.3); }
+  button.on { background:#8b7dff; color:#fff; border-color:transparent; }
+  select option { color:#000; }
+  .grp { display:flex; align-items:center; gap:5px; padding:0 4px; opacity:.9; }
+  .grp button { padding:3px 9px; }
+  .grp b { min-width:12px; text-align:center; font-variant-numeric:tabular-nums; }
+  input[type=range] { width:76px; accent-color:#8b7dff; }
+
+  #hint { position:fixed; top:128px; left:50%; transform:translateX(-50%); width:min(800px, calc(100% - 40px)); text-align:center; pointer-events:none; z-index:3;
+    padding:10px 16px 13px; border-radius:14px; overflow:hidden; background:rgba(18,16,30,.82); border:1px solid rgba(255,255,255,.09); box-shadow:0 10px 40px rgba(0,0,0,.45);
+    color:rgba(220,215,255,.85); font-size:13px; line-height:1.55; letter-spacing:.02em; transition:opacity .7s; opacity:0; }
+  body.paper #hint { color:rgba(60,50,80,.85); background:rgba(255,250,240,.92); border-color:rgba(0,0,0,.08); }
+  #hint b { font-weight:600; color:#fff; } body.paper #hint b { color:#000; }
+  #hint.show { opacity:1; pointer-events:auto; }
+  #hint span { white-space:nowrap; }
+  #hintBar { position:absolute; left:0; bottom:0; height:3px; width:100%; background:#8b7dff; opacity:.8; }
+  select { display:none; }
+  .dd { position:relative; display:inline-block; }
+  .dd > button::after { content:'▾'; margin-left:6px; opacity:.7; font-size:12px; }
+  .ddList { display:none; position:absolute; left:0; top:calc(100% + 5px); min-width:100%; z-index:9; padding:4px; border-radius:12px; white-space:nowrap;
+    background:rgba(26,23,44,.98); border:1px solid rgba(255,255,255,.14); box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  body.paper .ddList { background:#fffaf0; border-color:rgba(0,0,0,.12); box-shadow:0 8px 24px rgba(80,60,30,.2); }
+  .dd.up .ddList { top:auto; bottom:calc(100% + 5px); }
+  .dd.open .ddList { display:block; }
+  .grp:has(.dd.open) { position:relative; z-index:20; opacity:1; }
+  .dd.open { z-index:20; }
+  .ddList div { padding:4px 10px; border-radius:8px; cursor:pointer; }
+  .ddList div.sel { background:rgba(139,125,255,.22); }
+  .ddList div:hover { background:rgba(139,125,255,.45); }
+  #top { position:fixed; top:12px; left:12px; z-index:5; display:flex; gap:10px; align-items:center; padding:8px 12px 8px 8px; max-width:calc(100% - 210px);
+    background:rgba(18,16,30,.7); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.09); border-radius:18px; box-shadow:0 10px 40px rgba(0,0,0,.45); transition:opacity .3s; }
+  body.paper #top { background:rgba(255,250,240,.82); border-color:rgba(0,0,0,.08); box-shadow:0 8px 30px rgba(80,60,30,.15); }
+  #top.hidden { opacity:0; pointer-events:none; }
+  #pv { position:static; inset:auto; width:84px; height:84px; flex:none; border-radius:50%; background:rgba(0,0,0,.28); touch-action:auto; }
+  body.paper #pv { background:rgba(0,0,0,.05); }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px; min-height:27px; }
+  .cap { font-size:10px; letter-spacing:.25em; text-transform:uppercase; opacity:.5; margin:0 4px; }
+  .seg { display:inline-flex; gap:2px; }
+  #top button, #top select { padding:3px 9px; }
+  #top .grp b { min-width:22px; }
+  #dInfo { opacity:.55; font-variant-numeric:tabular-nums; }
+  #mix { position:fixed; right:12px; bottom:118px; width:270px; padding:10px 12px; z-index:4;
+    background:rgba(18,16,30,.82); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.09); border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,.45); }
+  body.paper #mix { background:rgba(255,250,240,.9); border-color:rgba(0,0,0,.08); }
+  #mix.hidden { display:none; }
+  #mix .mrow { display:flex; align-items:center; gap:8px; height:24px; }
+  #mix .mrow span { width:78px; } #mix .mrow input { flex:1; width:auto; } #mix .mrow b { width:38px; text-align:right; font-variant-numeric:tabular-nums; font-weight:500; }
+  #mix .row { margin-top:6px; gap:4px; } #mix button { padding:3px 9px; }
+
+
+  #hud { position:fixed; top:12px; right:16px; text-align:right; pointer-events:none; transition:opacity .3s; }
+  #mood { font-size:11px; letter-spacing:.3em; text-transform:uppercase; opacity:.55; }
+  #chord { font-size:24px; font-weight:300; letter-spacing:.03em; margin:1px 0 3px; font-variant-numeric:tabular-nums; }
+  #beats i, #seeds i { display:inline-block; border-radius:50%; margin-left:5px; }
+  #beats i { width:5px; height:5px; background:currentColor; opacity:.18; transition:opacity .35s; }
+  #beats i.on { opacity:.95; transition:none; }
+  #seeds { margin-top:7px; }
+  #seeds i { width:7px; height:7px; border:1px solid currentColor; opacity:.35; transition:all .4s; }
+  #seeds i.on { opacity:1; background:#ffe9a8; border-color:#ffe9a8; box-shadow:0 0 8px #ffd76a; }
+  body.paper #seeds i.on { background:#e0902a; border-color:#e0902a; box-shadow:none; }
+
+  #toast { position:fixed; top:20%; left:50%; transform:translateX(-50%); font-size:19px; font-weight:300; letter-spacing:.14em; white-space:nowrap;
+    opacity:0; transition:opacity 1.4s; pointer-events:none; text-shadow:0 2px 14px #000; }
+  body.paper #toast { text-shadow:none; }
+  #toast.show { opacity:.95; transition:opacity .4s; }
+
+  #intro { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center;
+    background:radial-gradient(ellipse at center, rgba(7,6,13,.45), rgba(7,6,13,.92)); cursor:pointer; transition:opacity 1.2s; z-index:5; }
+  #intro.gone { opacity:0; pointer-events:none; }
+  #intro h1 { margin:0; font-size:44px; font-weight:200; letter-spacing:.5em; text-indent:.5em; }
+  #intro p { margin:0; font-size:14px; letter-spacing:.14em; opacity:.7; }
+  #intro .go { margin-top:22px; font-size:12px; letter-spacing:.3em; text-transform:uppercase; opacity:.9; animation:breathe 2.6s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity:.35; } }
+</style>
+</head>
+<body>
+<canvas id="art"></canvas>
+<canvas id="over"></canvas>
+<div id="hint">
+  <span><b>Design</b>&nbsp;a&nbsp;machine&nbsp;in&nbsp;the&nbsp;top&nbsp;bar,&nbsp;then&nbsp;<b>click</b>&nbsp;empty&nbsp;space&nbsp;to&nbsp;plant&nbsp;it</span> ·
+  <span><b>click</b>&nbsp;a&nbsp;machine&nbsp;to&nbsp;re-gear&nbsp;it&nbsp;to&nbsp;that&nbsp;design</span> ·
+  <span><b>shift-click</b>&nbsp;one&nbsp;to&nbsp;pick&nbsp;its&nbsp;design&nbsp;up</span> ·
+  <span><b>Right-click</b>&nbsp;clears:&nbsp;a&nbsp;machine,&nbsp;or&nbsp;on&nbsp;empty&nbsp;space&nbsp;the&nbsp;ink</span> ·
+  <span><b>drag</b>&nbsp;machines&nbsp;to&nbsp;move&nbsp;them</span> ·
+  <span><b>scroll</b>&nbsp;moves&nbsp;a&nbsp;pen</span> ·
+  <span>The&nbsp;ring&nbsp;sets&nbsp;the&nbsp;key:&nbsp;the&nbsp;most&nbsp;common&nbsp;ring&nbsp;size&nbsp;in&nbsp;the&nbsp;garden&nbsp;decides&nbsp;the&nbsp;mood</span> ·
+  <span>turn&nbsp;on&nbsp;<b>Journey</b>&nbsp;for&nbsp;seeds&nbsp;to&nbsp;catch</span>
+  <i id="hintBar"></i>
+</div>
+<div id="top">
+  <canvas id="pv" width="168" height="168"></canvas>
+  <div>
+    <div class="row">
+      <span class="cap">Next machine</span>
+      <label class="grp">Gear shape <select id="dVoice" title="The shape of the gears. Each shape is an instrument, and bends the figure its own way"></select></label>
+      <label class="grp">Ring <select id="dRing" title="Ring teeth. Each ring size is a key and mode; the most common ring in the garden sets the mood"></select></label>
+      <span class="grp">Gears <span class="seg" id="dCount" title="Gears nested inside each other"></span></span>
+      <span class="grp">Mirror <span class="seg" id="dSym" title="Rotated copies of the pen. Each copy sings a harmony: 2 adds a fifth, 3 makes a chord (a bass walks up instead)"></span></span>
+      <label class="grp">Pace <select id="dPace" title="Outward swings (notes) per beat"></select></label>
+      <button id="dice" title="Randomise everything, ring and voice included (R)">Roll</button>
+    </div>
+    <div class="row" id="gearRow"></div>
+    <div class="row">
+      <label class="grp" title="How far the pen sits from the last gear's centre">Pen <input type="range" id="dPen" min="5" max="145" step="1"></label>
+      <label class="grp" title="How much the pen breathes in and out">Wobble <input type="range" id="dWob" min="0" max="40" step="1"></label>
+      <label class="grp" title="Turns the whole figure each beat, so the melody walks to new notes. Zero keeps the loop fixed">Spin <input type="range" id="dSpin" min="-10" max="10" step="1"></label>
+      <label class="grp" title="Size on the board. Much bigger than usual for the voice plays an octave down, much smaller an octave up">Size <input type="range" id="dSize" min="8" max="32" step="1"></label>
+      <span id="dInfo"></span>
+    </div>
+  </div>
+</div>
+<div id="hud">
+  <div id="mood"></div>
+  <div id="chord"></div>
+  <div id="beats"><i></i><i></i><i></i><i></i></div>
+  <div id="seeds"></div>
+</div>
+<div id="toast"></div>
+
+<div id="bar">
+  <span class="cap">Garden</span>
+  <button id="snd" class="on" title="M">♪ Sound</button>
+  <label class="grp">Tempo <input type="range" id="tempo" min="50" max="110" step="1"><b id="bpm"></b></label>
+  <label class="grp">Ink memory <input type="range" id="mem" min="0" max="100" step="1"></label>
+  <select id="palette" title="Colours"></select>
+  <button id="theme" title="T">Paper</button>
+  <button id="gears" class="on" title="G">Gears</button>
+  <button id="rain" class="on" title="Vinyl rain">Rain</button>
+  <button id="journey" title="Seeds drift in; fill the row and the garden blooms into the next key. Your gears are not touched: each ring size simply means the next mood. Off: no seeds, the key only changes when you change rings">Journey</button>
+  <button id="wipe" title="C, or right-click empty space">Wipe ink</button>
+  <button id="empty" title="Remove every machine">Clear garden</button>
+  <select id="gardenSel" title="Ready-made gardens: different bands, moods and tempos"></select>
+  <button id="mixBtn" title="Per-voice volume">Mixer</button>
+  <button id="share" title="Copy a link that reopens this exact garden. The address bar always holds it too">Copy link</button>
+  <button id="save" title="Save the drawing as a picture (S)">Screenshot</button>
+</div>
+<div id="mix" class="hidden">
+  <div class="cap" style="margin:0 0 4px">Mixer</div>
+  <div id="mixRows"></div>
+  <div class="row"><button id="mixReset">Reset</button></div>
+</div>
+
+<div id="intro">
+  <h1>ORBITALS</h1>
+  <p>a spirograph music garden</p>
+  <p class="go">click to begin · sound on</p>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const TAU = Math.PI * 2;
+const art = $('#art'), over = $('#over');
+const actx = art.getContext('2d'), octx = over.getContext('2d');
+
+// ---------- dev hooks (see tools/README.md) ----------
+// ?seed=N makes every garden repeatable; ?dev logs each note played so tools/listen.js can read the music back.
+const Q = new URLSearchParams(location.search), DEV = Q.has('dev'), NOTELOG = [];
+function seedRandom(n) {
+  let a = n >>> 0;
+  Math.random = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+if (Q.has('seed')) seedRandom(+Q.get('seed') || 1);
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const randInt = (a, b) => Math.floor(rand(a, b + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const mod = (a, n) => ((a % n) + n) % n;
+
+// ---------- settings ----------
+const S = { journey: false, bpm: 76, memory: 75, showGears: true, palette: 'mood', theme: 'neon', sound: true, rain: true, paused: false };
+
+const PALETTES = {
+  aurora: ['#00ffd0', '#4f7cff', '#c04bff', '#ff4fa3'],
+  ember:  ['#ff3d00', '#ffae00', '#ffe680', '#ff2a6d'],
+  ocean:  ['#00e5ff', '#0077ff', '#7cffcb', '#2b4bff'],
+  candy:  ['#ff6ad5', '#c774e8', '#ad8cff', '#94d0ff'],
+  forest: ['#b6ff6a', '#3dffa8', '#00b3ff', '#e8ff7a'],
+  sunset: ['#ff5f6d', '#ffc371', '#ff8ad8', '#7a5cff'],
+  rainbow: null,
+};
+const PAL_KEYS = Object.keys(PALETTES);
+const hex2rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const PAL = Object.fromEntries(Object.entries(PALETTES).map(([k, v]) => [k, v && v.map(hex2rgb)]));
+
+function colorAt(pal, u) {
+  u = ((u % 1) + 1) % 1;
+  const paper = S.theme === 'paper';
+  const stops = PAL[pal];
+  if (!stops) return `hsl(${u * 360},${paper ? 75 : 100}%,${paper ? 40 : 62}%)`;
+  const x = u * stops.length, i = Math.floor(x), f = x - i;
+  const a = stops[i], b = stops[(i + 1) % stops.length], k = paper ? 0.6 : 1;
+  return `rgb(${(a[0] + (b[0] - a[0]) * f) * k | 0},${(a[1] + (b[1] - a[1]) * f) * k | 0},${(a[2] + (b[2] - a[2]) * f) * k | 0})`;
+}
+
+// ---------- harmony ----------
+// A mood is a key, a mode and a four-chord loop. Melodic voices play the mode's pentatonic (never a wrong
+// note), harmonic voices play tones of whichever chord is sounding, so every machine agrees with every other.
+const MODES = {
+  ionian:     [0, 2, 4, 5, 7, 9, 11],
+  dorian:     [0, 2, 3, 5, 7, 9, 10],
+  aeolian:    [0, 2, 3, 5, 7, 8, 10],
+  lydian:     [0, 2, 4, 6, 7, 9, 11],
+  mixolydian: [0, 2, 4, 5, 7, 9, 10],
+};
+const NOTE = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+const MOODS = [
+  { name: 'Dusk',     key: 50, mode: 'dorian',     prog: [0, 3, 0, 4], pals: ['aurora', 'candy'] },
+  { name: 'Tide',     key: 53, mode: 'lydian',     prog: [0, 1, 5, 4], pals: ['ocean', 'forest'] },
+  { name: 'Lantern',  key: 45, mode: 'aeolian',    prog: [0, 5, 2, 6], pals: ['ember', 'sunset'] },
+  { name: 'Meadow',   key: 48, mode: 'ionian',     prog: [0, 5, 3, 4], pals: ['forest', 'sunset'] },
+  { name: 'Drift',    key: 52, mode: 'mixolydian', prog: [0, 6, 3, 0], pals: ['candy', 'ocean'] },
+  { name: 'Nocturne', key: 49, mode: 'aeolian',    prog: [0, 3, 5, 6], pals: ['aurora', 'ember'] },
+];
+// Each ring size is a mood. The most common ring in the garden decides which one is playing.
+const RINGS = [72, 84, 96, 105, 120, 144];
+MOODS.forEach((m, i) => { m.ring = RINGS[i]; });
+let SHIFT = 0;                // each bloom turns the wheel one step: every ring size now means the next mood
+const moodOfRing = r => MOODS[(Math.max(0, RINGS.indexOf(r)) + SHIFT) % MOODS.length];
+let M = MOODS[0];
+const BEATS_PER_CHORD = 8, SWING = 0.14;
+const degMidi = d => M.key + MODES[M.mode][mod(d, 7)] + 12 * Math.floor(d / 7);
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+const pentDeg = i => (MODES[M.mode][2] === 3 ? [0, 2, 3, 4, 6] : [0, 1, 2, 4, 5])[mod(i, 5)] + 7 * Math.floor(i / 5);
+const chordAt = beat => M.prog[mod(Math.floor(beat / BEATS_PER_CHORD), M.prog.length)];
+const fold = (n, lo, span = 12) => { while (n < lo) n += 12; while (n >= lo + span) n -= 12; return n; };
+function chordName(r) {
+  const m = MODES[M.mode], iv = k => mod(m[mod(r + k, 7)] - m[mod(r, 7)], 12);
+  const q = iv(4) === 6 ? 'ø7' : iv(2) === 3 ? 'm7' : iv(6) === 11 ? 'maj7' : '7';
+  return NOTE[mod(M.key + m[mod(r, 7)], 12)] + q;
+}
+
+// ---------- transport ----------
+// One beat clock drives both the gears and the music. It follows the audio clock once sound is running.
+let AC = null, T0 = 0, beatPos = 0, dBeat = 0, clockSrc = 0;
+const spb = () => 60 / S.bpm;
+const clockRaw = () => clockSrc ? AC.currentTime : performance.now() / 1000;
+const rebase = () => { T0 = clockRaw() - beatPos * spb(); };
+function tick() {
+  const src = AC && AC.state === 'running' ? 1 : 0;
+  if (src !== clockSrc) { clockSrc = src; rebase(); }
+  if (S.paused) { rebase(); dBeat = 0; return; }
+  let d = (clockRaw() - T0) / spb() - beatPos;
+  if (d > 0.2 || d < 0) { d = clamp(d, 0, 0.05); beatPos += d; rebase(); } else beatPos += d;   // tab was asleep: don't leap
+  dBeat = d;
+}
+const slotBeat = k => k / 4 + (k & 1 ? SWING / 4 : 0);        // k counts 16ths; odd ones swing late
+const audible = () => clockSrc === 1 && S.sound && !document.hidden;
+const when = beat => Math.max(T0 + beat * spb(), AC.currentTime + 0.005);
+const vq = [];                                                // visuals that must land with their note
+const at = (beat, fn) => vq.push({ due: performance.now() + (beat - beatPos) * spb() * 1000, fn });
+const slotUse = new Map();
+function claimSlot(k, voice) {                                // keep any one instant from getting crowded
+  if (voice === 'drums') return true;
+  const c = slotUse.get(k) || 0;
+  if (c >= 3) return false;
+  slotUse.set(k, c + 1);
+  if (slotUse.size > 96) for (const key of slotUse.keys()) if (key < beatPos * 4 - 4) slotUse.delete(key);
+  return true;
+}
+
+// ---------- audio ----------
+let master, bus, revIn, revOut, dlyIn, delayNode, rainGain, NOISE, DRIVE;
+const RAIN = 0.125;                // a bed under the music, well below the hats
+const STRIP = {}, DRY = {};       // STRIP: each voice's input (its volume lives here); DRY: its dry output, tapped for stem recordings
+// [dry, reverb send, delay send] per voice. LEVEL is the mixer panel's multiplier on top (1 = as designed).
+const MIX = { kalimba: [1.3, 0.4, 0.32], bell: [1.15, 0.65, 0.38], keys: [1.15, 0.4, 0.22], bass: [0.85, 0.04, 0], pad: [1.1, 0.65, 0.1], drums: [0.9, 0.16, 0.04], fx: [0.9, 0.75, 0.45] };
+const LEVEL = { kalimba: 1, bell: 1, keys: 1, bass: 1, pad: 1, drums: 1, fx: 1, reverb: 1 };
+function setLevel(k, v) {
+  LEVEL[k] = v;
+  if (AC) (k === 'reverb' ? revOut.gain : STRIP[k].gain).setTargetAtTime(k === 'reverb' ? 0.5 * v : v, AC.currentTime, 0.05);
+}
+function initAudio() {
+  if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) return;
+  AC = new Ctor();
+  const sr = AC.sampleRate;
+  master = AC.createGain(); master.gain.value = S.sound ? 1.1 : 0; master.connect(AC.destination);
+  const comp = AC.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3; comp.attack.value = 0.03; comp.release.value = 0.2; comp.connect(master);   // slow attack: drum hits punch through
+  const tone = AC.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 8500; tone.connect(comp);   // tape warmth
+  bus = AC.createGain(); bus.gain.value = 0.8; bus.connect(tone);
+
+  // reverb: a generated hall
+  const len = sr * 3.4 | 0, ir = AC.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
+  }
+  revIn = AC.createGain();
+  const conv = AC.createConvolver(); conv.buffer = ir;
+  const rg = revOut = AC.createGain(); rg.gain.value = 0.5 * LEVEL.reverb;
+  revIn.connect(conv); conv.connect(rg); rg.connect(tone);
+
+  // delay: dotted eighth, locked to tempo
+  dlyIn = AC.createGain();
+  delayNode = AC.createDelay(2); delayNode.delayTime.value = spb() * 0.75;
+  const fb = AC.createGain(); fb.gain.value = 0.36;
+  const dlp = AC.createBiquadFilter(); dlp.type = 'lowpass'; dlp.frequency.value = 2200;
+  const d2r = AC.createGain(); d2r.gain.value = 0.3;
+  dlyIn.connect(delayNode); delayNode.connect(dlp); dlp.connect(fb); fb.connect(delayNode); dlp.connect(tone); dlp.connect(d2r); d2r.connect(revIn);
+
+  // one mixer strip per voice
+  for (const [k, [dry, rv, dl]] of Object.entries(MIX)) {
+    const inp = AC.createGain(), a = AC.createGain(), b = AC.createGain(), c = AC.createGain();
+    inp.gain.value = LEVEL[k]; a.gain.value = dry; b.gain.value = rv; c.gain.value = dl; DRY[k] = a;
+    inp.connect(a); a.connect(bus); inp.connect(b); b.connect(revIn); inp.connect(c); c.connect(dlyIn);
+    STRIP[k] = inp;
+  }
+
+  DRIVE = new Float32Array(1024); for (let i = 0; i < 1024; i++) DRIVE[i] = Math.tanh((i / 511.5 - 1) * 2.6);
+  NOISE = AC.createBuffer(1, sr * 2, sr);
+  { const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+
+  // vinyl rain: soft hiss with sparse droplets
+  const rb = AC.createBuffer(2, sr * 5, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = rb.getChannelData(ch);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.05 + (Math.random() < 0.0009 ? (Math.random() * 2 - 1) * 0.4 : 0);
+  }
+  const rs = AC.createBufferSource(); rs.buffer = rb; rs.loop = true;
+  const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+  const rlp = AC.createBiquadFilter(); rlp.type = 'lowpass'; rlp.frequency.value = 3800;
+  rainGain = AC.createGain(); rainGain.gain.value = S.rain ? RAIN : 0;
+  rs.connect(hp); hp.connect(rlp); rlp.connect(rainGain); rainGain.connect(tone); rs.start();
+}
+function setMaster() {
+  if (!AC) return;
+  master.gain.setTargetAtTime(S.sound && !document.hidden ? 1.1 : 0, AC.currentTime, 0.06);
+}
+
+function chan(strip, pan) {
+  const p = AC.createStereoPanner(); p.pan.value = clamp(pan, -0.8, 0.8); p.connect(STRIP[strip]); return p;
+}
+function envGain(t, a, peak, dec, dest) {
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0002), t + a);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec);
+  g.connect(dest); return g;
+}
+function osc(type, f, t, end, dest, amp = 1) {
+  const o = AC.createOscillator(); o.type = type; o.frequency.value = f;
+  if (amp !== 1) { const g = AC.createGain(); g.gain.value = amp; o.connect(g); g.connect(dest); } else o.connect(dest);
+  o.start(t); o.stop(end); return o;
+}
+function fm(t, f, ratio, index, idxDecay, end, dest) {        // sine carrier with a decaying sine modulator
+  const c = osc('sine', f, t, end, dest);
+  const mg = AC.createGain();
+  mg.gain.setValueAtTime(Math.max(index, 1), t); mg.gain.exponentialRampToValueAtTime(1, t + idxDecay);
+  mg.connect(c.frequency);
+  osc('sine', f * ratio, t, end, mg);
+}
+function noiseHit(t, dur, dest) {
+  const s = AC.createBufferSource(); s.buffer = NOISE; s.loop = true; s.connect(dest);
+  s.start(t, Math.random() * 1.5); s.stop(t + dur);
+}
+const SYN = {
+  kalimba(t, f, v, pan) {
+    const out = chan('kalimba', pan), g = envGain(t, 0.006, 0.17 * v, 1.5, out), e = t + 1.6;
+    osc('triangle', f, t, e, g); osc('sine', f * 2, t, e, g, 0.3);
+    osc('sine', f * 5.4, t, t + 0.1, envGain(t, 0.002, 0.05 * v, 0.07, out));   // the tine's click
+  },
+  bell(t, f, v, pan, strip = 'bell') {
+    const out = chan(strip, pan), g = envGain(t, 0.004, 0.1 * v, 3.0, out), e = t + 3.1;
+    fm(t, f, 3.5, f * 1.4 * v, 1.2, e, g);
+    osc('sine', f * 2.001, t, e, g, 0.2);
+  },
+  keys(t, f, v, pan) {
+    const out = chan('keys', pan), g = envGain(t, 0.008, 0.15 * v, 2.0, out), e = t + 2.1;
+    fm(t, f, 1, f * 0.9 * v, 0.45, e, g);
+    osc('sine', f * 2, t, e, g, 0.12);
+  },
+  bass(t, f, v, pan) {
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; lp.connect(chan('bass', pan * 0.3));
+    const g = envGain(t, 0.015, 0.32 * v, 1.0, lp), e = t + 1.1;
+    osc('sine', f, t, e, g); osc('triangle', f, t, e, g, 0.5);
+    osc('sawtooth', f, t, e, g, 0.16); osc('sine', f * 2, t, e, g, 0.22);     // overtones, so the line is still heard on speakers with no low end
+  },
+  pad(t, f, v, pan) {                                         // a slow glow on top of the pad machine's drone
+    const g = AC.createGain(), e = t + 3.5;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07 * v, t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 3.4);
+    g.connect(chan('pad', pan));
+    osc('sine', f, t, e, g); osc('triangle', f * 1.004, t, e, g, 0.5); osc('sine', f * 2, t, e, g, 0.15);
+  },
+  kick(t, v, pan) {
+    const out = chan('drums', 0);
+    // body: a sine that drops fast from 150 Hz to a 48 Hz thump, driven into soft saturation so it has
+    // overtones (and so still sounds like a bass drum on laptop and phone speakers)
+    const sh = AC.createWaveShaper(); sh.curve = DRIVE;
+    const lvl = AC.createGain(); lvl.gain.value = 0.62; sh.connect(lvl); lvl.connect(out);
+    const o = osc('sine', 150, t, t + 0.5, envGain(t, 0.002, 0.95 * v, 0.44, sh));
+    o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(54, t + 0.07); o.frequency.exponentialRampToValueAtTime(46, t + 0.4);
+    // beater: a short knock in the low mids and a dull click
+    const k = osc('triangle', 330, t, t + 0.12, envGain(t, 0.001, 0.4 * v, 0.07, out));
+    k.frequency.setValueAtTime(330, t); k.frequency.exponentialRampToValueAtTime(130, t + 0.05);
+    const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 3200;
+    f.connect(envGain(t, 0.001, 0.3 * v, 0.018, out)); noiseHit(t, 0.04, f);
+  },
+  snare(t, v, pan) {                                          // a soft, dusty backbeat
+    const out = chan('drums', pan * 0.3);
+    const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2100; f.Q.value = 0.6;
+    f.connect(envGain(t, 0.002, 0.34 * v, 0.17, out)); noiseHit(t, 0.22, f);
+    const o = osc('triangle', 215, t, t + 0.14, envGain(t, 0.002, 0.3 * v, 0.1, out));
+    o.frequency.setValueAtTime(215, t); o.frequency.exponentialRampToValueAtTime(165, t + 0.08);
+  },
+  hat(t, v, pan) {
+    const f = AC.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000;
+    f.connect(envGain(t, 0.002, 0.1 * v, 0.05, chan('drums', pan))); noiseHit(t, 0.08, f);
+  },
+  shaker(t, v, pan) {
+    const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 5200; f.Q.value = 1.2;
+    f.connect(envGain(t, 0.03, 0.1 * v, 0.09, chan('drums', pan))); noiseHit(t, 0.15, f);
+  },
+  rim(t, v, pan) {
+    const out = chan('drums', pan * 0.5);
+    const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 3;
+    f.connect(envGain(t, 0.002, 0.24 * v, 0.1, out)); noiseHit(t, 0.14, f);
+    osc('triangle', 430, t, t + 0.06, envGain(t, 0.002, 0.1 * v, 0.04, out));
+  },
+};
+if (DEV) for (const k of Object.keys(SYN)) {
+  const f = SYN[k], pitched = ['kalimba', 'bell', 'keys', 'bass', 'pad'].includes(k);
+  SYN[k] = (t, a, b, ...r) => {
+    NOTELOG.push({ t: +t.toFixed(4), beat: +((t - T0) / spb()).toFixed(3), voice: r[1] === 'fx' ? 'fx' : pitched ? k : 'drums', sound: k,
+      midi: pitched ? Math.round(69 + 12 * Math.log2(a / 440)) : null, vel: +(pitched ? b : a).toFixed(3), mood: M.name, key: M.key, mode: M.mode });
+    return f(t, a, b, ...r);
+  };
+}
+const play = (voice, midi, t, vel, pan) => SYN[voice](t, mtof(midi), vel, pan);
+// the note a scale-step interval above (4 = a fifth, 2 = a third), staying inside the mood's mode
+function harmony(midi, steps) {
+  const m = MODES[M.mode], i = m.indexOf(mod(midi - M.key, 12));
+  return i < 0 ? midi + 7 : midi + mod(m[(i + steps) % 7] - m[i], 12);
+}
+
+// ---------- voices ----------
+// hpb = outer swings per beat the gears are tuned to; grid/gap are in 16ths.
+const VOICES = {
+  kalimba: { name: 'kalimba', hpb: [0.75, 1, 1.5],  size: [0.15, 0.20], grid: 2, gap: 2, inner: { grid: 2, gap: 4 } },
+  bass:    { name: 'bass',    hpb: [0.5, 0.75, 1], size: [0.24, 0.29], grid: 2, gap: 2 },
+  pad:     { name: 'pad',     hpb: [0.25, 0.5],    size: [0.25, 0.30], grid: 4, gap: 4 },
+  bell:    { name: 'bells',   hpb: [0.5, 0.75, 1], size: [0.11, 0.15], grid: 2, gap: 2 },
+  keys:    { name: 'keys',    hpb: [0.5, 0.75, 1], size: [0.17, 0.22], grid: 2, gap: 2, inner: { grid: 4, gap: 8 } },
+  drums:   { name: 'drums',   hpb: [2],            size: [0.15, 0.19], grid: 2, gap: 2 },
+};
+// A voice is a gear shape: each instrument is a differently shaped gear, which bends the figure itself.
+// Gear outlines: radius as a function of angle round the gear, averaging about 1. A non-round gear's centre
+// rises and falls as its corners roll past the contact point, so the pen's path picks up the gear's shape.
+const poly = (n, amt) => { const h = Math.PI / n, mean = Math.cos(h) / (2 * h) * Math.log((1 + Math.sin(h)) / (1 - Math.sin(h))); return a => { const x = mod(a, 2 * h) - h; return 1 + amt * (Math.cos(h) / Math.cos(x) / mean - 1); }; };
+const ell = k => a => 1 / Math.sqrt(Math.pow(Math.cos(a) / k, 2) + Math.pow(Math.sin(a) * k, 2));
+const SHAPES = {
+  kalimba: { name: 'round',    icon: '●', f: null },
+  pad:     { name: 'oval',     icon: '⬮', f: ell(1.14) },
+  bass:    { name: 'bar',      icon: '▬', f: ell(1.38) },
+  bell:    { name: 'triangle', icon: '▲', f: poly(3, 0.5) },
+  keys:    { name: 'square',   icon: '■', f: poly(4, 0.7) },
+  drums:   { name: 'star',     icon: '★', f: a => 1 + 0.2 * Math.cos(5 * a) },
+};
+const shapeOf = v => SHAPES[v].f;
+// Kick patterns, as 16th positions in the bar. A drum machine's first gear picks one (teeth mod 4); snare is always on 2 and 4.
+const KICKS = [[0, 10], [0, 6, 10], [0, 8], [0, 10, 14]];
+let bbSlot = -1e9;            // last slot the kit's backbone was written for (shared, so two drum machines don't double it)
+const VOICE_ORDER = ['kalimba', 'bass', 'pad', 'bell', 'keys', 'drums'];
+const MELODIC = new Set(['kalimba', 'bell', 'keys']);
+const ECHO_LO = { kalimba: 57, bell: 69, keys: 55 };
+const GAME = { seeds: 0, need: 8, blooms: 0 };
+
+// Size sets the register: a machine clearly bigger than its voice's usual size drops an octave, a smaller one rises.
+function octOf(voice, size) {
+  const V = VOICES[voice];
+  return voice === 'drums' ? 0 : size >= V.size[1] + 0.025 ? -12 : size <= V.size[0] - 0.025 ? 12 : 0;
+}
+function chooseVoice() {            // whichever voice the garden is missing
+  const c = {};
+  for (const e of ENG) if (!e.dying) c[e.voice] = (c[e.voice] || 0) + 1;
+  for (const v of VOICE_ORDER) if (!c[v]) return v;
+  return pick([...MELODIC]);
+}
+// Where the pen swings out sets the note: the ring around a machine is its keyboard.
+function noteFor(m, sector, outer, beat) {
+  const root = chordAt(beat), i = sector + m.note.root, CT = [0, 2, 4, 6, 8];
+  switch (m.voice) {
+    case 'kalimba': return outer ? degMidi(pentDeg(mod(i, 10))) + 12 : degMidi(pentDeg(mod(i, 5)));
+    case 'bell':    return fold(degMidi(pentDeg(mod(i, 7))) + 24, 67, 24);
+    case 'keys':    return outer ? fold(degMidi(root + CT[mod(i, 5)]) + (sector >= 5 ? 12 : 0), 55, 24) : fold(degMidi(root), 43);
+    case 'bass':    return fold(degMidi(root + [0, 0, 4, 0, 7][sector % 5]), 34);
+    default:        return fold(degMidi(root + CT[mod(i, 5)]), 57, 19);
+  }
+}
+
+// ---------- gear geometry ----------
+// Gear i rolls inside/outside gear i-1. Absolute spin of gear i = coef_i * t, coef rational => pattern closes after L orbits.
+const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a || 1; };
+const lcm = (a, b) => a / gcd(a, b) * b;
+
+function geometry(c, sh) {
+  const radii = [c.ring], dist = [0], coef = [0], sgn = [0];
+  let num = 0, den = 1, L = 1, ext = 0, v = 0;
+  for (let i = 1; i <= c.count; i++) {
+    const g = c.gears[i - 1], parent = radii[i - 1];
+    const r = g.out ? g.teeth : clamp(g.teeth, 3, parent - 2);
+    const s = g.out ? 1 : -1, d = parent + s * r;
+    num = num * r + s * d * den; den *= r;
+    const k = gcd(num, den); num /= k; den /= k;
+    radii.push(r); dist.push(d); coef.push(num / den); sgn.push(s);
+    L = lcm(L, den);
+    ext += d; v += d * Math.abs(coef[i - 1] + 1);
+  }
+  return { n: c.count, radii, dist, coef, sgn, sh: sh || null, L, ext, v };
+}
+
+function randomCfg(ring) {
+  let c;
+  for (let tries = 0; tries < 80; tries++) {
+    c = { ring: ring || pick(RINGS), count: pick([1, 2, 2, 2, 3, 3]), gears: [] };
+    let parent = c.ring;
+    for (let i = 0; i < 3; i++) {
+      const out = Math.random() < (i === 0 ? 0.18 : 0.1);
+      const teeth = out ? randInt(8, Math.max(9, parent * 0.6 | 0)) : randInt(Math.max(5, parent * 0.18 | 0), parent - 3);
+      c.gears.push({ teeth, out }); parent = teeth;
+    }
+    const L = geometry(c).L;
+    if (L >= 3 && L <= 48) break;
+  }
+  return c;
+}
+
+// ---------- machines ----------
+const SECTORS = 10;
+let W, H, DPR, MIN;
+const ENG = [];
+let SEQ = 0;
+function penXY(G, t, pen, rot, rec) {
+  let cx = 0, cy = 0, a = 0;
+  for (let i = 1; i <= G.n; i++) {
+    const ang = a + t + rot, an = G.coef[i] * t;
+    // a shaped gear: the distance between centres follows the gear's outline at the point touching its parent
+    const d = G.sh ? G.radii[i - 1] + G.sgn[i] * G.radii[i] * G.sh(a + t - an + (G.sgn[i] > 0 ? Math.PI : 0)) : G.dist[i];
+    cx += d * Math.cos(ang); cy += d * Math.sin(ang);
+    a = an;
+    if (rec) rec[i] = { x: cx, y: cy, a: a + rot };
+  }
+  const pr = pen * G.radii[G.n];
+  return [cx + pr * Math.cos(a + rot), cy + pr * Math.sin(a + rot)];
+}
+
+class Machine {
+  constructor(x, y, d) {
+    this.hx = x; this.hy = y; this.x = x; this.y = y; this.px = x; this.py = y;
+    this.env = 0; this.age = 0; this.dying = false; this.flash = 0;
+    this.rot = rand(0, TAU);
+    this.penPh = rand(0, TAU); this.penRate = rand(0.015, 0.06);
+    this.hue = Math.random(); this.palIx = randInt(0, 1);
+    this.drift = { ax: rand(0.01, 0.05) * MIN, ay: rand(0.01, 0.05) * MIN, fx: rand(0.04, 0.12), fy: rand(0.04, 0.12), p: rand(0, 9) };
+    this.note = { root: randInt(0, 4) };
+    this.hits = new Array(SECTORS).fill(-1e9);
+    this.lastSlot = [-1e9, -1e9];
+    this.links = [];
+    this.phrase = pick([3, 4, 4, 6]); this.restAt = randInt(0, 5);     // melodic voices sit out one bar in every few, so the music breathes
+    this.apply(d);
+  }
+  // a machine is exactly what the top bar says: every knob there lands here
+  apply(d) {
+    if (d.voice !== 'pad') this.stopDrone();
+    this.voice = d.voice;
+    this.cfg = { ring: d.ring, count: d.count, gears: d.gears.map(g => ({ ...g })) };
+    this.G = geometry(this.cfg, shapeOf(this.voice));
+    this.p0 = d.pen; this.pAmp = d.wobble; this.spin = d.spin; this.rotRate = 0; this.sym = d.sym;
+    this.sizeF = d.size; this.size = d.size * MIN; this.hpb = d.pace;
+    this.t = 0; this.tl = 0; this.avgLen = 1; this.prevR = 0; this.prevD = 0; this.rNow = 0.5;
+    this.born = ++SEQ;
+    this.setPal(); this.fit(); this.measure();
+  }
+  design() {
+    return { voice: this.voice, ring: this.cfg.ring, count: this.cfg.count, gears: this.cfg.gears.map(g => ({ ...g })),
+      pen: this.p0, wobble: this.pAmp, spin: this.spin, size: this.sizeF, pace: this.hpb, sym: this.sym };
+  }
+  setPal() {   // by default a machine wears the colours of its ring's mood
+    this.pal = S.palette === 'mood' ? moodOfRing(this.cfg.ring).pals[this.palIx] : S.palette === 'mixed' ? pick(PAL_KEYS) : S.palette;
+  }
+  fit() {
+    const G = this.G, pm = (this.p0 + this.pAmp) * G.radii[G.n];
+    this.rMax = G.ext + pm;
+    if (G.sh) {                       // shaped gears reach a little further or less far than round ones: measure it
+      let far = 0;
+      const span = TAU * Math.min(G.L, 6);
+      for (let i = 0; i < 1500; i++) { const q = penXY(G, i / 1500 * span, this.p0 + this.pAmp, 0); far = Math.max(far, Math.hypot(q[0], q[1])); }
+      this.rMax = far * 1.02;
+    }
+    this.scale = this.size / this.rMax;
+    this.pxPerRad = (G.v + pm * Math.abs(G.coef[G.n])) * this.scale;
+    this.oct = octOf(this.voice, this.sizeF);
+  }
+  // Count how often the pen swings out per radian of turning, then gear the machine to the tempo
+  // so those swings arrive at its pace. A 5-lobed figure and a 7-lobed one become a polyrhythm.
+  measure() {
+    const G = this.G, span = TAU * Math.min(G.L, 6), N = 5000;
+    let pr = 0, pd = 0, hits = 0;
+    for (let i = 0; i <= N; i++) {
+      const q = this.penAt(i / N * span, this.p0, 0), r = Math.hypot(q[0], q[1]), d = r - pr;
+      if (i > 1 && pd > 0 && d <= 0 && r > 0.6 * this.rMax) hits++;
+      pd = d; pr = r;
+    }
+    this.rho = Math.max(hits, 1) / span;
+    this.rate = clamp(this.hpb / this.rho, 0.2, 12);                       // radians per beat
+    const fast = Math.max(1, ...G.coef.map(Math.abs));
+    this.lstep = Math.min(1 / (this.rho * 40), TAU / (16 * fast));
+    this.tl = this.t;
+    // spin turns the figure by a fixed angle per beat, so the pattern walks round the note ring: at full spin, a new note every bar or two
+    this.rotRate = this.spin * 0.01 / this.rate;
+  }
+  pen() { return clamp(this.p0 + this.pAmp * Math.sin(this.penPh), 0, 1.7); }
+  penAt(t, pen, rot, rec) { return penXY(this.G, t, pen, rot, rec); }
+  update(dt) {
+    this.age += dt;
+    this.env = this.dying ? this.env - dt / 2.5 : Math.min(1, this.env + dt / 1.2);
+    this.px = this.x; this.py = this.y;
+    const d = this.drift;
+    const tx = this.hx + d.ax * Math.sin(this.age * d.fx + d.p), ty = this.hy + d.ay * Math.sin(this.age * d.fy + d.p * 1.7);
+    const k = this === grabbed ? 1 : Math.min(1, dt * 3);
+    this.x += (tx - this.x) * k; this.y += (ty - this.y) * k;
+    this.flash *= Math.pow(0.02, dt);
+    this.hue += dBeat * 0.012;
+  }
+  // The listening head runs a moment ahead of the pen, so each swing can be placed exactly on the beat grid.
+  // A drum machine keeps time on its own: kick on its pattern, snare on beats 2 and 4, written just ahead of the beat.
+  backbone() {
+    if (this.env < 0.25) return;
+    const ahead = beatPos + 0.3 + 0.06 / spb(), pat = KICKS[this.cfg.gears[0].teeth % KICKS.length];
+    for (let k = Math.max(bbSlot + 2, Math.ceil((beatPos + 0.04) * 2) * 2); k / 4 <= ahead; k += 2) {
+      bbSlot = k;
+      const s = mod(k, 16), kind = pat.includes(s) ? 'kick' : s === 4 || s === 12 ? 'snare' : null;
+      if (!kind) continue;
+      const beat = slotBeat(k), vel = this.env * (s === 0 ? 1 : 0.86);
+      if (audible()) SYN[kind](when(beat), vel, (this.x / W) * 2 - 1);
+      at(beat, () => {
+        this.flash = Math.max(this.flash, kind === 'kick' ? 1 : 0.6);
+        pulses.push({ x: this.x, y: this.y, r: this.size * (kind === 'kick' ? 0.2 : 0.55), a: 0.55, col: colorAt(this.pal, this.hue), grow: kind === 'kick' ? 150 : 70 });
+      });
+    }
+  }
+  listen() {
+    if (this.voice === 'drums') this.backbone();
+    const target = this.t + (0.3 + 0.06 / spb()) * this.rate;
+    if (this.tl < this.t) this.tl = this.t;
+    let guard = 0;
+    while (this.tl < target && guard++ < 300) {
+      this.tl += this.lstep;
+      const off = this.tl - this.t;
+      const pen = clamp(this.p0 + this.pAmp * Math.sin(this.penPh + this.penRate * off), 0, 1.7);
+      const q = this.penAt(this.tl, pen, this.rot + this.rotRate * off);
+      const r = Math.hypot(q[0], q[1]), d = r - this.prevR;
+      if (this.prevD > 0 && d <= 0 && r > 0.6 * this.rMax) this.trigger(q, r, off, true);
+      else if (this.prevD < 0 && d >= 0 && r < 0.45 * this.rMax) this.trigger(q, r, off, false);
+      this.prevD = d; this.prevR = r;
+    }
+  }
+  trigger(q, r, off, outer) {
+    const V = VOICES[this.voice];
+    if (this.env < 0.25 || (!outer && !V.inner)) return;
+    const g = outer ? V.grid : V.inner.grid, gap = outer ? V.gap : V.inner.gap, li = outer ? 0 : 1;
+    let k = Math.round((beatPos + off / this.rate) * 4 / g) * g;
+    if (MELODIC.has(this.voice) && mod(Math.floor(k / 16) + this.restAt, this.phrase) === 0) return;
+    while (k / 4 < beatPos + 0.04) k += g;
+    if (k - this.lastSlot[li] < gap || !claimSlot(k, this.voice)) return;
+    this.lastSlot[li] = k;
+    const beat = slotBeat(k);
+    const sector = Math.floor(mod(Math.atan2(q[1], q[0]) / TAU, 1) * SECTORS) % SECTORS;
+    const accent = k % 8 === 0 ? 1 : k % 4 === 0 ? 0.88 : 0.72;
+    const vel = this.env * accent * (outer ? 0.5 + 0.5 * Math.min(1, r / this.rMax) : 0.55);
+    const pan = (this.x / W) * 2 - 1;
+    let midi = null;
+    if (this.voice === 'drums') {
+      // kick and snare come from backbone(); the pen's swings add the hats and shakers around them
+      const s = mod(k, 16);
+      const kind = sector % 5 === 2 ? null : sector % 5 === 4 ? 'shaker' : 'hat';
+      if (!kind) return;
+      if (audible()) {
+        SYN[kind](when(beat), vel, pan);
+        if (kind === 'hat' || kind === 'shaker') for (let c = 1; c < this.sym; c++) SYN.hat(when(slotBeat(k + c)), vel * 0.3, -pan);   // mirrored drums: ghost hats on the 16ths after a hat
+      }
+    } else {
+      midi = noteFor(this, sector, outer, beat) + this.oct;
+      if (midi > 98) midi -= 12; else if (midi < 28) midi += 12;
+      if (audible()) {
+        play(this.voice, midi, when(beat), vel, pan);
+        // each mirrored pen sings a harmony, strummed just behind the real one: a fifth, then a third (an octave for bass)
+        const hi = { kalimba: 93, bell: 96, keys: 84, bass: 58, pad: 84 }[this.voice];
+        for (let c = 1; c < this.sym; c++) {
+          let n = c === 1 ? harmony(midi, 4) : this.voice === 'bass' ? midi + 12 : harmony(midi, 2);
+          if (n > hi) n -= 12;
+          // a mirrored bass walks (root, fifth, octave on the following eighths) instead of stacking into mud
+          if (this.voice === 'bass') play('bass', n, when(slotBeat(k + 2 * c)), vel * 0.6, pan);
+          else play(this.voice, n, when(beat) + 0.03 * c, vel * 0.55, clamp(pan + (c === 1 ? 0.35 : -0.35), -1, 1));
+        }
+      }
+    }
+    at(beat, () => this.mark(q, sector, outer, vel));
+    // overlapping machines answer each other: a neighbour echoes the note in its own voice
+    if (outer && midi !== null && this.links.length) {
+      const o = pick(this.links), k2 = k + 3, b2 = slotBeat(k2);
+      if (MELODIC.has(o.voice) && o.env > 0.5 && claimSlot(k2, o.voice)) {
+        if (audible()) play(o.voice, fold(midi, ECHO_LO[o.voice], 24), when(b2), vel * 0.5, (o.x / W) * 2 - 1);
+        const col = colorAt(this.pal, this.hue), dur = (b2 - beat) * spb() * 1000;
+        at(beat, () => sparks.push({ a: this, b: o, t0: performance.now(), dur, col }));
+        at(b2, () => { o.flash = Math.max(o.flash, 0.7); pulses.push({ x: o.x, y: o.y, r: o.size * 0.3, a: 0.5, col, grow: 70 }); });
+      }
+    }
+  }
+  // every note leaves a mark in the ink, so the drawing doubles as its own score
+  mark(q, sector, outer, vel) {
+    if (this.env <= 0) return;
+    this.hits[sector] = performance.now();
+    this.flash = outer ? 1 : 0.5;
+    const col = colorAt(this.pal, this.hue + 0.22);
+    actx.save();
+    actx.globalCompositeOperation = S.theme === 'paper' ? 'multiply' : 'lighter';
+    actx.fillStyle = col; actx.strokeStyle = col; actx.lineWidth = 1;
+    for (let c = 0; c < this.sym; c++) {          // mirrored pens sing too, so they leave marks and light the ring too
+      const cs = Math.cos(c * TAU / this.sym), sn = Math.sin(c * TAU / this.sym), soft = c ? 0.6 : 1;
+      const X = this.x + (q[0] * cs - q[1] * sn) * this.scale, Y = this.y + (q[0] * sn + q[1] * cs) * this.scale;
+      actx.globalAlpha = 0.9 * this.env * soft;
+      actx.beginPath(); actx.arc(X, Y, outer ? 1.5 + 3 * vel * soft : 3, 0, TAU);
+      outer ? actx.fill() : actx.stroke();
+      pulses.push({ x: X, y: Y, r: 2, a: 0.9 * soft, col, grow: outer ? 80 + 60 * vel : 40 });
+      if (c) this.hits[Math.round(sector + c * SECTORS / this.sym) % SECTORS] = performance.now() - 250;
+    }
+    actx.restore();
+  }
+  updateDrone() {   // pad machines hold the chord; the filter opens as the pen swings outward
+    if (this.voice !== 'pad' || !AC || AC.state !== 'running') return;
+    const now = AC.currentTime;
+    if (!this.drone) {
+      const g = AC.createGain(), lp = AC.createBiquadFilter(), pan = AC.createStereoPanner();
+      g.gain.value = 0; lp.type = 'lowpass'; lp.Q.value = 4;
+      const os = [[0, 1], [7, 0.7], [-6, 0.5]].map(([det, amp]) => {
+        const o = AC.createOscillator(), og = AC.createGain(); o.type = 'sawtooth'; o.detune.value = det; og.gain.value = amp;
+        o.connect(og); og.connect(lp); o.start(); return o;
+      });
+      lp.connect(g); g.connect(pan); pan.connect(STRIP.pad);
+      this.drone = { g, lp, pan, os };
+    }
+    const D = this.drone, rr = Math.min(1, this.rNow), r = chordAt(beatPos + 0.1);
+    const n0 = fold(degMidi(r), 45) + this.oct, base = degMidi(r);
+    const ns = [n0, n0 + mod(degMidi(r + 4) - base, 12), n0 + 12 + mod(degMidi(r + 2) - base, 12)];
+    D.os.forEach((o, i) => o.frequency.setTargetAtTime(mtof(ns[i]), now, 0.25));
+    D.lp.frequency.setTargetAtTime(160 + 1500 * rr * rr, now, 0.06);
+    D.g.gain.setTargetAtTime(S.paused ? 0 : 0.04 * Math.max(0, this.env), now, 0.15);
+    D.pan.pan.setTargetAtTime(clamp((this.x / W) * 2 - 1, -0.8, 0.8), now, 0.1);
+  }
+  stopDrone() {
+    if (!this.drone) return;
+    const now = AC.currentTime, D = this.drone;
+    D.g.gain.setTargetAtTime(0, now, 0.15);
+    for (const o of D.os) o.stop(now + 1);
+    this.drone = null;
+  }
+  draw() {
+    const dT = dBeat * this.rate;
+    if (this.env <= 0 || dT <= 0) return;
+    const paper = S.theme === 'paper', s = this.scale, CH = 6;
+    const n = clamp(Math.ceil(dT * this.pxPerRad / 2), 1, 600), h = dT / n;
+    const copies = [];
+    for (let k = 0; k < this.sym; k++) copies.push([Math.cos(k * TAU / this.sym), Math.sin(k * TAU / this.sym)]);
+    let steps = 0;
+    const pts = [];
+    while (steps < n) {
+      pts.length = 0;
+      let p = this.penAt(this.t, this.pen(), this.rot); pts.push(p);
+      let len = 0;
+      const m = Math.min(CH, n - steps);
+      for (let j = 0; j < m; j++) {
+        this.t += h; this.rot += this.rotRate * h; this.penPh += this.penRate * h;
+        const q = this.penAt(this.t, this.pen(), this.rot);
+        len += Math.hypot(q[0] - p[0], q[1] - p[1]) * s;
+        pts.push(q); p = q; steps++;
+      }
+      len /= m;
+      this.avgLen = this.avgLen * 0.97 + len * 0.03;
+      this.rNow = Math.hypot(p[0], p[1]) / this.rMax;
+      const w = 1.2 * (0.25 + 0.75 * this.env) * clamp(Math.pow(this.avgLen / Math.max(len, 1e-3), 0.6), 0.4, 2.4);
+      // slide the centre smoothly across the frame so dragging leaves continuous ribbons
+      const f = steps / n, ox = this.px + (this.x - this.px) * f, oy = this.py + (this.y - this.py) * f;
+      actx.strokeStyle = colorAt(this.pal, this.hue + 0.22 * this.rNow);
+      actx.lineWidth = w;
+      actx.globalAlpha = (paper ? 0.8 : 0.62) * Math.min(1, this.env * 1.5);
+      for (const [c, sn] of copies) {
+        actx.beginPath();
+        for (let j = 0; j < pts.length; j++) {
+          const x = pts[j][0], y = pts[j][1];
+          const X = ox + (x * c - y * sn) * s, Y = oy + (x * sn + y * c) * s;
+          j ? actx.lineTo(X, Y) : actx.moveTo(X, Y);
+        }
+        actx.stroke();
+      }
+    }
+  }
+}
+
+// ---------- seeds & flowers: the game ----------
+// Seeds drift through the garden. Sweep one up with a pen and it chimes the next step of a rising scale
+// and leaves a flower. Fill the row and the garden blooms: new key, new colours, and (at first) a new voice.
+const motes = [], flowers = [], sparks = [];
+let nextMote = 0, lastInput = -1e9;
+function spawnMote(now) {
+  motes.push({ x: rand(60, W - 60), y: rand(70, H - 120), vx: 0, vy: 0, ph: rand(0, 99), s: rand(0, 9), age: 0 });
+  nextMote = now + 1400;
+}
+function updateMotes(dt, now) {
+  if (!S.journey) { motes.length = 0; return; }      // no journey, no seeds: the garden is just an instrument
+  if (motes.length < 5 && now > nextMote) spawnMote(now);
+  const idle = now - lastInput > 9000, alive = ENG.filter(e => !e.dying && e.env > 0.3);
+  for (let i = motes.length - 1; i >= 0; i--) {
+    const m = motes[i];
+    m.age += dt; m.ph += dt;
+    let ax = Math.sin(m.ph * 0.31 + m.s) * 6, ay = Math.cos(m.ph * 0.27 + m.s * 2) * 6;
+    if (idle && alive.length) {            // left alone, seeds wander toward the nearest machine and the garden plays itself
+      let e = alive[0], bd = Infinity;
+      for (const a of alive) { const d = Math.hypot(a.x - m.x, a.y - m.y) - a.size; if (d < bd) { bd = d; e = a; } }
+      const dx = e.x - m.x, dy = e.y - m.y, d = Math.hypot(dx, dy) || 1, pull = clamp(d - e.size * 0.8, -30, 30) * 0.5;
+      ax += dx / d * pull; ay += dy / d * pull;
+    }
+    m.vx += (ax - m.vx * 0.6) * dt; m.vy += (ay - m.vy * 0.6) * dt;
+    m.x += m.vx * dt; m.y += m.vy * dt;
+    if (m.x < 30 || m.x > W - 30) { m.vx *= -1; m.x = clamp(m.x, 30, W - 30); }
+    if (m.y < 40 || m.y > H - 90) { m.vy *= -1; m.y = clamp(m.y, 40, H - 90); }
+    if (m.age < 1) continue;
+    for (const e of alive) {
+      if (Math.abs(Math.hypot(e.x - m.x, e.y - m.y) - e.size * 0.5) > e.size * 0.5 + 40) continue;
+      const p = e.penAt(e.t, e.pen(), e.rot);
+      let got = false;
+      for (let k = 0; k < e.sym && !got; k++) {
+        const c = Math.cos(k * TAU / e.sym), sn = Math.sin(k * TAU / e.sym);
+        got = Math.hypot(e.x + (p[0] * c - p[1] * sn) * e.scale - m.x, e.y + (p[0] * sn + p[1] * c) * e.scale - m.y) < 26;
+      }
+      if (got) { motes.splice(i, 1); collect(m, e, now); break; }
+    }
+  }
+}
+function collect(m, e, now) {
+  nextMote = Math.max(nextMote, now + 900);
+  const step = GAME.seeds++;
+  const k = Math.ceil(beatPos * 4 + 0.3), col = colorAt(e.pal, e.hue + 0.5), pan = (m.x / W) * 2 - 1;
+  if (audible()) {
+    const n = fold(degMidi(pentDeg(step)) + 24, 69, 24);
+    SYN.bell(when(slotBeat(k)), mtof(n), 0.75, pan, 'fx');
+    SYN.bell(when(slotBeat(k + 1)), mtof(n + (n < 80 ? 12 : 7)), 0.3, -pan, 'fx');
+  }
+  e.flash = 1;
+  pulses.push({ x: m.x, y: m.y, r: 4, a: 1, col: '#fff3c4', grow: 120 });
+  addFlower(m.x, m.y, rand(20, 34), e.pal, e.hue + 0.5, randInt(4, 9), 1.4);
+  if (GAME.seeds >= GAME.need) bloom(m.x, m.y); else hud();
+}
+function bloom(x, y) {
+  GAME.blooms++; GAME.seeds = 0; GAME.need = Math.min(14, 8 + 2 * GAME.blooms);
+  let msg = '✿ Bloom';
+  if (S.journey) {                       // the journey: gears stay as designed, but every ring now means the next mood
+    SHIFT++;
+    for (const e of ENG) e.setPal();
+    fillRings(); syncTop();
+    voteMood(true);
+    msg = `✿ ${M.name} · ${NOTE[mod(M.key, 12)]} ${M.mode}`;
+  }
+  hud(); toast(msg);
+  const k0 = Math.ceil(beatPos * 4 + 0.5);
+  if (audible()) [0, 2, 4, 6, 7, 9, 11, 14].forEach((d, i) => {
+    const b = slotBeat(k0 + i);
+    SYN.bell(when(b), mtof(degMidi(chordAt(b) + d)), 0.45 + 0.05 * i, (i / 7) * 1.2 - 0.6, 'fx');
+  });
+  for (let i = 0; i < 3; i++) {
+    addFlower(x, y, MIN * (0.07 + 0.05 * i), pick(M.pals), Math.random(), 5 + 2 * i + randInt(0, 1), 2.2 + i * 0.8);
+    pulses.push({ x, y, r: 6 + i * 26, a: 1, col: colorAt(M.pals[0], i / 3) });
+  }
+  for (const e of ENG) e.flash = 1;
+}
+// a flower is a tiny one-gear spirograph, drawn once, quickly
+function addFlower(x, y, size, pal, hue, petals, dur) {
+  const k = 1 - 1 / petals;
+  flowers.push({ x, y, size, pal, hue, p: petals, k, d: k * rand(0.45, 1), th: 0, dur, rot: rand(0, TAU) });
+}
+function drawFlowers(dt) {
+  for (let i = flowers.length - 1; i >= 0; i--) {
+    const f = flowers[i], th1 = Math.min(TAU * 1.02, f.th + TAU * dt / f.dur), norm = f.size / (f.k + f.d);
+    const n = Math.max(2, Math.ceil((th1 - f.th) * f.size * (1 + f.p) / 2.5));
+    actx.strokeStyle = colorAt(f.pal, f.hue + f.th / TAU * 0.3);
+    actx.lineWidth = 1.1; actx.globalAlpha = S.theme === 'paper' ? 0.85 : 0.7;
+    actx.beginPath();
+    for (let j = 0; j <= n; j++) {
+      const th = f.th + (th1 - f.th) * j / n, a = th + f.rot, b = (f.p - 1) * th - f.rot;
+      const X = f.x + (f.k * Math.cos(a) + f.d * Math.cos(b)) * norm, Y = f.y + (f.k * Math.sin(a) - f.d * Math.sin(b)) * norm;
+      j ? actx.lineTo(X, Y) : actx.moveTo(X, Y);
+    }
+    actx.stroke();
+    f.th = th1;
+    if (th1 >= TAU * 1.02) flowers.splice(i, 1);
+  }
+}
+
+// ---------- HUD ----------
+let hudChord = null, hudBeat = -1, toastTimer = null;
+function voteMood(quiet) {
+  const alive = ENG.filter(e => !e.dying);
+  if (!alive.length) return;
+  const n = {};
+  for (const e of alive) n[e.cfg.ring] = (n[e.cfg.ring] || 0) + 1;
+  const top = Math.max(...Object.values(n));
+  const winner = alive.filter(e => n[e.cfg.ring] === top).sort((a, b) => b.born - a.born)[0];   // ties go to the newest
+  const m = moodOfRing(winner.cfg.ring);
+  if (m === M) return;
+  M = m; hud();
+  if (!quiet) toast(`${M.name} · ${NOTE[mod(M.key, 12)]} ${M.mode}`);
+}
+function hud() {
+  $('#mood').textContent = `${M.name} · ${NOTE[mod(M.key, 12)]} ${M.mode}`;
+  let s = '';
+  for (let i = 0; i < GAME.need; i++) s += `<i${i < GAME.seeds ? ' class="on"' : ''}></i>`;
+  $('#seeds').innerHTML = s;
+  $('#seeds').style.display = S.journey ? '' : 'none';
+  hudChord = null;
+}
+function hudTick() {
+  const name = chordName(chordAt(beatPos));
+  if (name !== hudChord) { hudChord = name; $('#chord').textContent = name; }
+  const b = Math.floor(beatPos);
+  if (b !== hudBeat) {
+    hudBeat = b;
+    const dots = document.querySelectorAll('#beats i');
+    for (let i = 0; i < dots.length; i++) dots[i].className = i === mod(b, 4) ? 'on' : '';
+  }
+}
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ---------- canvas ----------
+const bg = () => S.theme === 'paper' ? '#f3ecdc' : '#07060d';
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight; MIN = Math.min(W, H);
+  for (const c of [art, over]) { c.width = W * DPR; c.height = H * DPR; c.style.width = W + 'px'; c.style.height = H + 'px'; }
+  actx.setTransform(DPR, 0, 0, DPR, 0, 0); octx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  actx.lineCap = 'round'; actx.lineJoin = 'round';
+  paintBg();
+  for (const e of ENG) { e.hx = clamp(e.hx, 0, W); e.hy = clamp(e.hy, 0, H); e.size = e.sizeF * MIN; e.fit(); }
+  for (const m of motes) { m.x = clamp(m.x, 30, W - 30); m.y = clamp(m.y, 40, H - 90); }
+}
+function paintBg() {
+  actx.save(); actx.globalCompositeOperation = 'source-over'; actx.globalAlpha = 1;
+  actx.fillStyle = bg(); actx.fillRect(0, 0, W, H); actx.restore();
+}
+// Fading in larger, rarer steps avoids the 8-bit "ghost" residue tiny alphas leave behind.
+let fadeAcc = 0;
+function fade(dt) {
+  const m = 1 - S.memory / 100;
+  fadeAcc += 0.64 * m * m * dt;
+  if (fadeAcc >= 0.05) {
+    actx.save(); actx.globalCompositeOperation = 'source-over'; actx.globalAlpha = Math.min(1, fadeAcc);
+    actx.fillStyle = bg(); actx.fillRect(0, 0, W, H); actx.restore();
+    fadeAcc = 0;
+  }
+}
+
+// ---------- the garden ----------
+function bestSpot() {
+  let best = null, bestD = -1;
+  const alive = ENG.filter(e => !e.dying);
+  for (let i = 0; i < 24; i++) {
+    const m = 0.2 * MIN, x = rand(m, W - m), y = rand(m + 60, H - m - 40);
+    const d = alive.reduce((acc, e) => Math.min(acc, Math.hypot(e.hx - x, e.hy - y)), 1e9);
+    if (d > bestD) { bestD = d; best = [x, y]; }
+  }
+  return best;
+}
+function plant(x, y, d, quiet) {
+  if (ENG.filter(e => !e.dying).length >= 10) { toast('The garden is full · right-click a machine to remove it'); return null; }
+  const e = new Machine(x, y, d);
+  ENG.push(e);
+  pulses.push({ x, y, r: 4, a: 1, col: colorAt(e.pal, e.hue) });
+  voteMood(quiet);
+  return e;
+}
+function uproot(e) {
+  e.dying = true;
+  pulses.push({ x: e.x, y: e.y, r: e.size, a: 0.7, col: colorAt(e.pal, e.hue), grow: -160 });
+  voteMood();
+}
+function manage() {
+  for (let i = ENG.length - 1; i >= 0; i--) if (ENG[i].dying && ENG[i].env <= 0) { ENG[i].stopDrone(); ENG.splice(i, 1); }
+  // machines whose figures overlap are linked and answer each other's notes
+  const alive = ENG.filter(e => !e.dying);
+  for (const e of ENG) e.links.length = 0;
+  for (let i = 0; i < alive.length; i++) for (let j = i + 1; j < alive.length; j++) {
+    const a = alive[i], b = alive[j];
+    if (Math.hypot(a.x - b.x, a.y - b.y) < (a.size + b.size) * 0.72) { a.links.push(b); b.links.push(a); }
+  }
+}
+// play a little figure in a machine's own voice (planting, re-gearing)
+function flourish(e, degs) {
+  if (!audible()) return;
+  const pan = (e.x / W) * 2 - 1, now = AC.currentTime + 0.02;
+  if (e.voice === 'drums') { SYN.kick(now, 0.8, pan); SYN.hat(now + 0.12, 0.8, pan); SYN.snare(now + 0.24, 0.7, pan); return; }
+  const r = chordAt(beatPos), lo = { kalimba: 57, bell: 69, keys: 55, bass: 34, pad: 57 }[e.voice];
+  degs.forEach((d, i) => play(e.voice, fold(degMidi(r + d), lo, e.voice === 'bass' ? 12 : 24), now + i * 0.09, 0.7, pan));
+}
+
+// ---------- overlay ----------
+const pulses = [];
+function gearPath(x, y, r, teeth, a, inward, sh) {
+  const amp = Math.min(3, r * 0.08) * (inward ? -1 : 1);
+  const N = Math.min(1200, teeth * 8);
+  octx.beginPath();
+  for (let i = 0; i <= N; i++) {
+    const th = i / N * TAU, rr = r * (sh ? sh(th - a) : 1) + amp * (Math.cos(teeth * (th - a)) > 0 ? 1 : -0.2);
+    const X = x + rr * Math.cos(th), Y = y + rr * Math.sin(th);
+    i ? octx.lineTo(X, Y) : octx.moveTo(X, Y);
+  }
+  octx.closePath();
+}
+const rec = [];
+function drawOverlay(dt, now) {
+  octx.clearRect(0, 0, W, H);
+  const paper = S.theme === 'paper', ink = paper ? '40,30,60' : '200,195,255';
+  const bp = Math.pow(1 - mod(beatPos, 1), 3);              // a soft pulse on every beat
+
+  // links between overlapping machines, and the echoes travelling along them
+  octx.lineWidth = 1; octx.setLineDash([2, 6]);
+  for (const e of ENG) for (const o of e.links) {
+    if (o.age > e.age) continue;
+    octx.strokeStyle = `rgba(${ink},${0.22 * Math.min(e.env, o.env)})`;
+    octx.beginPath(); octx.moveTo(e.x, e.y); octx.lineTo(o.x, o.y); octx.stroke();
+  }
+  octx.setLineDash([]);
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i], u = (now - s.t0) / s.dur;
+    if (u >= 1) { sparks.splice(i, 1); continue; }
+    const x = s.a.x + (s.b.x - s.a.x) * u, y = s.a.y + (s.b.y - s.a.y) * u;
+    octx.globalAlpha = 0.9; octx.fillStyle = s.col;
+    octx.beginPath(); octx.arc(x, y, 3, 0, TAU); octx.fill();
+  }
+  octx.globalAlpha = 1;
+
+  octx.font = '10px ui-sans-serif,system-ui,sans-serif'; octx.textAlign = 'center';
+  for (const e of ENG) {
+    const s = e.scale, hot = e === hover || e === grabbed, al = e.env * (hot ? 1.6 : 1);
+    const p = e.penAt(e.t, e.pen(), e.rot, rec);
+    const px = e.x + p[0] * s, py = e.y + p[1] * s;
+    if (S.showGears && al > 0) {
+      octx.lineWidth = 1;
+      gearPath(e.x, e.y, e.G.radii[0] * s, e.G.radii[0], e.rot, true);
+      octx.strokeStyle = `rgba(${ink},${0.16 * al})`; octx.stroke();
+      for (let i = 1; i <= e.G.n; i++) {
+        const g = rec[i], r = e.G.radii[i] * s, gx = e.x + g.x * s, gy = e.y + g.y * s;
+        gearPath(gx, gy, r, e.G.radii[i], g.a, false, e.G.sh);
+        octx.fillStyle = `rgba(${ink},${(0.03 + i * 0.012) * al})`; octx.fill();
+        octx.strokeStyle = `rgba(${ink},${0.28 * al})`; octx.stroke();
+      }
+      const l = rec[e.G.n];
+      octx.beginPath(); octx.moveTo(e.x + l.x * s, e.y + l.y * s); octx.lineTo(px, py);
+      octx.strokeStyle = `rgba(${ink},${0.4 * al})`; octx.setLineDash([3, 3]); octx.stroke(); octx.setLineDash([]);
+    }
+    const R = 9 + 16 * e.flash, col = colorAt(e.pal, e.hue + 0.22 * e.rNow);
+    // note ring: each arc is one pitch; it lights when the pen swings out at that angle
+    const rr = e.size + 10 + 2.5 * bp, gap = 0.06;
+    for (let k = 0; k < SECTORS; k++) {
+      const lit = Math.max(0, 1 - (now - e.hits[k]) / 700);
+      octx.globalAlpha = Math.max(0, e.env) * (0.1 + 0.05 * bp + 0.85 * lit);
+      octx.strokeStyle = lit > 0 ? col : `rgb(${ink})`;
+      octx.lineWidth = 1.5 + 3 * lit;
+      octx.beginPath(); octx.arc(e.x, e.y, rr + 4 * lit, k / SECTORS * TAU + gap, (k + 1) / SECTORS * TAU - gap); octx.stroke();
+    }
+    // voice label: shown on hover, after a change, and faintly while gears are visible
+    const fresh = Math.max(0, 1 - (now - (e.labelAt || 0)) / 2500);
+    const la = Math.max(hot ? 0.9 : 0, fresh, S.showGears ? 0.3 : 0) * Math.max(0, e.env);
+    if (la > 0) { octx.globalAlpha = la; octx.fillStyle = `rgb(${ink})`; octx.fillText(`${SHAPES[e.voice].name.toUpperCase()} · ${VOICES[e.voice].name.toUpperCase()} · ${e.cfg.ring}`, e.x, e.y + e.size + 30); }
+    octx.globalAlpha = 1;
+    const grd = octx.createRadialGradient(px, py, 0, px, py, R);
+    grd.addColorStop(0, col); grd.addColorStop(1, 'rgba(0,0,0,0)');
+    octx.globalAlpha = (paper ? 0.5 : 0.9) * Math.max(0, e.env); octx.fillStyle = grd;
+    octx.beginPath(); octx.arc(px, py, R, 0, TAU); octx.fill();
+    octx.fillStyle = paper ? '#2b2533' : '#fff';
+    octx.beginPath(); octx.arc(px, py, 2, 0, TAU); octx.fill();
+    octx.globalAlpha = 1;
+  }
+
+  // seeds
+  for (const m of motes) {
+    const a = Math.min(1, m.age), R = 13 + 3 * Math.sin(m.ph * 2.2) + 4 * bp;
+    const grd = octx.createRadialGradient(m.x, m.y, 0, m.x, m.y, R);
+    grd.addColorStop(0, paper ? 'rgba(224,144,42,.9)' : 'rgba(255,233,168,.95)'); grd.addColorStop(1, 'rgba(255,215,106,0)');
+    octx.globalAlpha = a; octx.fillStyle = grd;
+    octx.beginPath(); octx.arc(m.x, m.y, R, 0, TAU); octx.fill();
+    octx.fillStyle = paper ? '#7a4a10' : '#fff';
+    octx.beginPath(); octx.arc(m.x, m.y, 2.2, 0, TAU); octx.fill();
+    octx.beginPath(); octx.arc(m.x + 8 * Math.cos(m.ph * 1.7), m.y + 8 * Math.sin(m.ph * 1.7), 1, 0, TAU); octx.fill();
+  }
+  octx.globalAlpha = 1;
+
+  for (let i = pulses.length - 1; i >= 0; i--) {
+    const p = pulses[i];
+    p.r += dt * (p.grow || 260); p.a -= dt * (p.grow ? 2.2 : 1.4);
+    if (p.a <= 0 || p.r <= 0) { pulses.splice(i, 1); continue; }
+    octx.globalAlpha = p.a * 0.8; octx.strokeStyle = p.col; octx.lineWidth = 2;
+    octx.beginPath(); octx.arc(p.x, p.y, p.r, 0, TAU); octx.stroke();
+  }
+  octx.globalAlpha = 1;
+}
+
+// ---------- loop ----------
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  tick();
+  if (!S.paused) {
+    manage(now);
+    fade(dt);
+    for (const e of ENG) e.update(dt);
+    for (const e of ENG) e.listen();
+    for (let i = vq.length - 1; i >= 0; i--) if (vq[i].due <= now) { const v = vq[i]; vq.splice(i, 1); v.fn(); }
+    actx.globalCompositeOperation = S.theme === 'paper' ? 'multiply' : 'lighter';
+    for (const e of ENG) e.draw();
+    drawFlowers(dt);
+    actx.globalCompositeOperation = 'source-over'; actx.globalAlpha = 1;
+    updateMotes(dt, now);
+    hudTick();
+  }
+  for (const e of ENG) e.updateDrone();
+  drawOverlay(S.paused ? 0 : dt, now);
+  requestAnimationFrame(frame);
+}
+
+// ---------- the next machine (top bar) ----------
+// Everything about a machine is a knob here. Clicking the board plants exactly this design.
+const PACES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3], PACE_LABEL = { 0.25: '¼', 0.5: '½', 0.75: '¾', 1: '1', 1.5: '1½', 2: '2', 3: '3' };
+const D = { voice: 'kalimba', ring: 72, count: 1, gears: [{ teeth: 30, out: false }, { teeth: 12, out: false }, { teeth: 5, out: false }],
+  pen: 0.8, wobble: 0.2, spin: 4, size: 0.18, pace: 1, sym: 1 };
+let dirty = false;            // has the player set knobs by hand since the last roll?
+function voiceDefaults(random) {
+  const V = VOICES[D.voice];
+  D.size = +(random ? rand(V.size[0], V.size[1]) : (V.size[0] + V.size[1]) / 2).toFixed(2);     // big machines sing low
+  D.pace = random ? pick(V.hpb) : V.hpb[V.hpb.length >> 1];
+}
+// The Roll button re-rolls everything, ring and voice included. The quiet re-roll after planting
+// keeps the ring, so the key doesn't jump on every click, and picks a voice the garden is missing.
+function roll(all) {
+  if (all) { D.ring = pick(RINGS); D.voice = pick(VOICE_ORDER); }
+  else D.voice = chooseVoice();
+  const c = randomCfg(D.ring);
+  D.count = c.count; D.gears = c.gears;
+  D.pen = +rand(0.45, 1.05).toFixed(2); D.wobble = +rand(0.1, 0.35).toFixed(2);
+  D.spin = pick([-1, 1]) * randInt(2, 10); D.sym = pick([1, 1, 1, 1, 2, 3]);
+  voiceDefaults(true);
+  dirty = false; syncTop();
+}
+function segSync(id, v) { for (const b of document.querySelectorAll(id + ' button')) b.classList.toggle('on', +b.dataset.v === v); }
+function syncTop() {
+  $('#dVoice').value = D.voice; $('#dRing').value = D.ring; $('#dPace').value = D.pace;
+  segSync('#dCount', D.count); segSync('#dSym', D.sym);
+  let parent = D.ring;
+  for (let i = 0; i < 3; i++) {
+    const g = D.gears[i], sl = $('#dT' + i), max = Math.max(4, g.out ? Math.floor(parent * 0.6) : parent - 3);
+    g.teeth = clamp(g.teeth, 3, max);
+    sl.max = max; sl.value = g.teeth;
+    $('#dN' + i).textContent = g.teeth;
+    $('#dO' + i).textContent = g.out ? 'outside' : 'inside';
+    $('#g' + i).style.display = i < D.count ? '' : 'none';
+    parent = g.teeth;
+  }
+  $('#dPen').value = Math.round(D.pen * 100); $('#dWob').value = Math.round(D.wobble * 100);
+  $('#dSpin').value = D.spin; $('#dSize').value = Math.round(D.size * 100);
+  const G = geometry(D, shapeOf(D.voice)), m = moodOfRing(D.ring);
+  $('#dInfo').textContent = `${m.name}: ${NOTE[mod(m.key, 12)]} ${m.mode} · ` + (G.L > 40 ? 'never quite closes' : `closes in ${G.L} turn${G.L === 1 ? '' : 's'}`)
+    + ({ '-12': ' · octave down', 12: ' · octave up' }[octOf(D.voice, D.size)] || '')
+    + (D.voice === 'drums' ? ` · kick pattern ${'ABCD'[D.gears[0].teeth % 4]} (set by gear 1 teeth)` : '');
+  drawPreview(G);
+  syncMenus();
+}
+function drawPreview(G) {
+  const c = $('#pv'), x = c.getContext('2d'), w = c.width;
+  const span = Math.min(G.L, 40) * TAU;
+  const fast = Math.max(1, ...G.coef.map(Math.abs)), N = Math.min(9000, Math.ceil(span * fast * 5));
+  const P = [];
+  let rMax = 1e-6;
+  for (let i = 0; i <= N; i++) { const p = penXY(G, i / N * span, D.pen, 0); P.push(p); rMax = Math.max(rMax, Math.hypot(p[0], p[1])); }
+  const sc = (w / 2 - 8) / rMax, pal = moodOfRing(D.ring).pals[0], z = w / 168;
+  x.clearRect(0, 0, w, w);
+  x.lineWidth = 1.2 * z; x.globalAlpha = 0.85;
+  for (let k = 0; k < D.sym; k++) {
+    const cs = Math.cos(k * TAU / D.sym), sn = Math.sin(k * TAU / D.sym);
+    x.strokeStyle = colorAt(pal, 0.12 + k * 0.25);
+    x.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const p = P[i];
+      const X = w / 2 + (p[0] * cs - p[1] * sn) * sc, Y = w / 2 + (p[0] * sn + p[1] * cs) * sc;
+      i ? x.lineTo(X, Y) : x.moveTo(X, Y);
+    }
+    x.stroke();
+  }
+  x.globalAlpha = 1;
+  if (G.sh) {                         // show the gear itself in the corner
+    x.strokeStyle = S.theme === 'paper' ? 'rgba(40,30,60,.6)' : 'rgba(220,215,255,.7)'; x.lineWidth = 1.2 * z;
+    x.beginPath();
+    for (let i = 0; i <= 90; i++) { const a = i / 90 * TAU, r = 11 * z * G.sh(a); i ? x.lineTo(16 * z + r * Math.cos(a), 16 * z - r * Math.sin(a)) : x.moveTo(16 * z + r, 16 * z); }
+    x.stroke();
+  }
+}
+const edit = fn => e => {
+  fn(e); dirty = true; syncTop();
+  if (e && e.target && e.target.tagName === 'SELECT') e.target.blur();
+};
+$('#dVoice').innerHTML = VOICE_ORDER.map(v => `<option value="${v}">${SHAPES[v].icon} ${SHAPES[v].name} · ${VOICES[v].name}</option>`).join('');
+$('#dVoice').onchange = edit(e => { D.voice = e.target.value; voiceDefaults(false); });
+function fillRings() { $('#dRing').innerHTML = RINGS.map(r => `<option value="${r}">${r} · ${moodOfRing(r).name}</option>`).join(''); }
+fillRings();
+$('#dRing').onchange = edit(e => { D.ring = +e.target.value; });
+$('#dPace').innerHTML = PACES.map(p => `<option value="${p}">${PACE_LABEL[p]} / beat</option>`).join('');
+$('#dPace').onchange = edit(e => { D.pace = +e.target.value; });
+for (const [id, key] of [['#dCount', 'count'], ['#dSym', 'sym']]) {
+  $(id).innerHTML = [1, 2, 3].map(v => `<button data-v="${v}">${v}</button>`).join('');
+  $(id).onclick = edit(e => { const v = e.target.dataset && e.target.dataset.v; if (v) D[key] = +v; });
+}
+$('#gearRow').innerHTML = [0, 1, 2].map(i =>
+  `<span class="grp" id="g${i}">Gear ${i + 1} teeth <input type="range" id="dT${i}" min="3" step="1"><b id="dN${i}"></b><button id="dO${i}" title="Roll inside or outside its parent"></button></span>`).join('');
+for (let i = 0; i < 3; i++) {
+  $('#dT' + i).oninput = edit(e => { D.gears[i].teeth = +e.target.value; });
+  $('#dO' + i).onclick = edit(() => { D.gears[i].out = !D.gears[i].out; });
+}
+$('#dPen').oninput = edit(e => { D.pen = e.target.value / 100; });
+$('#dWob').oninput = edit(e => { D.wobble = e.target.value / 100; });
+$('#dSpin').oninput = edit(e => { D.spin = +e.target.value; });
+$('#dSize').oninput = edit(e => { D.size = e.target.value / 100; });
+$('#dice').onclick = () => roll(true);
+
+// ---------- interaction ----------
+let grabbed = null, hover = null, down = null;
+const hit = (x, y) => {
+  let best = null, bd = Infinity;
+  for (const e of ENG) {
+    if (e.dying) continue;
+    const d = Math.hypot(e.x - x, e.y - y);
+    if (d < Math.max(30, e.size * 0.45) && d < bd) { bd = d; best = e; }
+  }
+  return best;
+};
+function interacted() { initAudio(); lastInput = performance.now(); }
+$('#intro').addEventListener('pointerdown', () => {
+  initAudio();
+  $('#intro').classList.add('gone');
+  showHint();
+});
+// The instructions sit under the top bar and count themselves down; resting the pointer on them holds the clock.
+const HINT_MS = 12000;
+let hintLeft = 0, hintHover = false;
+function showHint() {
+  const r = $('#top').getBoundingClientRect();
+  if (r && r.bottom > 0) $('#hint').style.top = r.bottom + 10 + 'px';
+  hintLeft = HINT_MS; $('#hintBar').style.width = '100%'; $('#hint').classList.add('show');
+}
+$('#hint').addEventListener('pointerenter', () => { hintHover = true; });
+$('#hint').addEventListener('pointerleave', () => { hintHover = false; });
+setInterval(() => {
+  if (hintLeft <= 0) return;
+  if (!hintHover) hintLeft -= 50;
+  $('#hintBar').style.width = Math.max(0, hintLeft / HINT_MS * 100) + '%';
+  if (hintLeft <= 0) $('#hint').classList.remove('show');
+}, 50);
+art.addEventListener('contextmenu', e => e.preventDefault());
+art.addEventListener('pointerdown', e => {
+  interacted();
+  if (document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur();   // a dropdown must not hold on to the first click
+  const m = hit(e.clientX, e.clientY);
+  if (e.button === 2 || e.ctrlKey) {            // right-click clears: a machine, or on empty space the ink
+    if (m) { uproot(m); if (hover === m) hover = null; } else paintBg();
+    return;
+  }
+  if (e.shiftKey && m) {                        // pick a machine's design up into the top bar
+    Object.assign(D, m.design()); dirty = true; syncTop();
+    m.flash = 1; m.labelAt = performance.now(); toast('Design picked up');
+    return;
+  }
+  art.setPointerCapture(e.pointerId);
+  down = { x: e.clientX, y: e.clientY, moved: false, m };
+  if (m) { grabbed = m; m.offx = m.hx - e.clientX; m.offy = m.hy - e.clientY; art.className = 'grabbing'; }
+});
+art.addEventListener('pointermove', e => {
+  if (down && down.m && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) down.moved = true;
+  if (grabbed) { lastInput = performance.now(); grabbed.hx = e.clientX + grabbed.offx; grabbed.hy = e.clientY + grabbed.offy; return; }
+  hover = hit(e.clientX, e.clientY);
+  art.className = hover ? 'grab' : '';
+});
+art.addEventListener('pointerup', e => {
+  const now = performance.now();
+  // On empty space only the press and release points count: a stray move event (browsers send one after a dropdown closes) must not cancel the click.
+  if (down && !down.moved && Math.hypot(e.clientX - down.x, e.clientY - down.y) <= 5) {
+    if (down.m) {                               // re-gear an existing machine to the current design
+      const m = down.m;
+      m.apply(D); m.flash = 1; m.labelAt = now;
+      pulses.push({ x: m.x, y: m.y, r: 4, a: 1, col: colorAt(m.pal, m.hue) });
+      voteMood(); flourish(m, [0, 2, 4]);
+    } else {
+      const m = plant(e.clientX, e.clientY, D);
+      if (m) {
+        m.flash = 1; m.labelAt = now; flourish(m, [0]);
+        if (!dirty) roll(false);                // untouched knobs: offer something fresh for the next one
+      }
+    }
+  }
+  if (grabbed) grabbed.drift.p = -grabbed.age * grabbed.drift.fx;   // avoid a jump when it lets go
+  grabbed = null; down = null; art.className = hover ? 'grab' : '';
+});
+art.addEventListener('wheel', e => {
+  e.preventDefault();
+  const m = hit(e.clientX, e.clientY) || hover;
+  if (!m) return;
+  lastInput = performance.now();
+  m.p0 = clamp(m.p0 - Math.sign(e.deltaY) * 0.04, 0.05, 1.45); m.fit(); m.flash = 0.6;
+}, { passive: false });
+
+// ---------- garden controls (bottom bar) ----------
+$('#palette').innerHTML = ['mood', 'mixed', ...PAL_KEYS].map(k => `<option value="${k}">${k === 'mood' ? 'Ring colours' : k[0].toUpperCase() + k.slice(1)}</option>`).join('');
+$('#palette').onchange = e => {
+  S.palette = e.target.value;
+  for (const m of ENG) m.setPal();
+  e.target.blur();
+};
+const setBpm = v => {
+  S.bpm = clamp(v, 50, 110); rebase();
+  $('#bpm').textContent = S.bpm;
+  if (AC) delayNode.delayTime.setTargetAtTime(spb() * 0.75, AC.currentTime, 0.2);
+};
+$('#tempo').value = S.bpm; $('#bpm').textContent = S.bpm; $('#tempo').oninput = e => setBpm(+e.target.value);
+$('#mem').value = S.memory; $('#mem').oninput = e => S.memory = +e.target.value;
+const toggleSound = () => { S.sound = !S.sound; $('#snd').classList.toggle('on', S.sound); if (S.sound) initAudio(); setMaster(); };
+const toggleRain = () => {
+  S.rain = !S.rain; $('#rain').classList.toggle('on', S.rain);
+  if (AC) rainGain.gain.setTargetAtTime(S.rain ? RAIN : 0, AC.currentTime, 0.2);
+};
+const toggleGears = () => { S.showGears = !S.showGears; $('#gears').classList.toggle('on', S.showGears); };
+const toggleJourney = () => {
+  S.journey = !S.journey; $('#journey').classList.toggle('on', S.journey);
+  hud(); toast(S.journey ? 'Journey on · drag machines so their pens sweep up the seeds ✦' : 'Journey off · no seeds, the key stays put');
+};
+const toggleTheme = () => {
+  S.theme = S.theme === 'neon' ? 'paper' : 'neon';
+  document.body.classList.toggle('paper', S.theme === 'paper');
+  $('#theme').textContent = S.theme === 'paper' ? 'Neon' : 'Paper';
+  paintBg(); syncTop();
+};
+const clearGarden = () => { for (const m of ENG) m.dying = true; paintBg(); };
+function save() {
+  const a = document.createElement('a');
+  a.download = `orbitals-${Date.now()}.png`; a.href = art.toDataURL('image/png'); a.click();
+}
+// Gardens: ready-made combinations of voices, mood and tempo, the same every time, for hearing how things sit together.
+const GARDENS = [
+  { name: 'Trio',      seed: 11, mood: 'Dusk',     voices: ['kalimba', 'bass', 'pad'], bpm: 76 },
+  { name: 'Full band', seed: 7,  mood: 'Dusk',     voices: VOICE_ORDER, bpm: 76 },
+  { name: 'Ambient',   seed: 23, mood: 'Tide',     voices: ['pad', 'bell', 'keys', 'bell'], bpm: 64 },
+  { name: 'Groove',    seed: 5,  mood: 'Lantern',  voices: ['drums', 'bass', 'keys', 'kalimba'], bpm: 84 },
+  { name: 'Music box', seed: 31, mood: 'Meadow',   voices: ['kalimba', 'bell', 'kalimba'], bpm: 72 },
+  { name: 'Mirrors',   seed: 42, mood: 'Drift',    voices: ['kalimba', 'keys', 'pad', 'bass'], sym: 3, bpm: 76 },
+  { name: 'Night',     seed: 17, mood: 'Nocturne', voices: ['pad', 'bass', 'bell', 'keys', 'drums'], bpm: 68 },
+  { name: 'Surprise' },
+];
+function loadGarden(g) {
+  if (!g.voices) {                              // Surprise: a different band every time
+    seedRandom(Date.now());
+    const n = randInt(3, 6), voices = [pick([...MELODIC])];
+    while (voices.length < n) voices.push(pick(VOICE_ORDER.filter(v => MELODIC.has(v) ? voices.filter(x => x === v).length < 2 : !voices.includes(v))));
+    g = { name: 'Surprise', mood: pick(MOODS).name, voices, bpm: randInt(62, 90) };
+  } else seedRandom(g.seed);
+  for (const e of ENG) e.dying = true;
+  motes.length = 0; GAME.seeds = 0; paintBg();
+  D.ring = RINGS.find(r => moodOfRing(r).name === g.mood) || D.ring;
+  setBpm(g.bpm); $('#tempo').value = g.bpm;
+  for (const v of g.voices) {
+    roll(false); D.voice = v; voiceDefaults(true); if (g.sym) D.sym = g.sym;
+    const [x, y] = bestSpot(); plant(x, y, D, true);
+  }
+  roll(false); voteMood(true); hud();
+  toast(`${g.name} · ${M.name} · ${g.voices.map(v => VOICES[v].name).join(', ')}`);
+}
+$('#gardenSel').innerHTML = '<option value="">Seed Garden</option>' + GARDENS.map((g, i) => `<option value="${i}">${g.name}</option>`).join('');
+$('#gardenSel').onchange = e => {
+  const i = e.target.value;
+  e.target.value = ''; e.target.blur();          // back to the placeholder, so the same garden can be picked again
+  if (i !== '') { interacted(); loadGarden(GARDENS[+i]); }
+};
+
+// mixer panel: per-voice volume by ear
+const MIX_NAMES = { kalimba: 'Kalimba', bell: 'Bells', keys: 'Keys', bass: 'Bass', pad: 'Pad', drums: 'Drums', fx: 'Seed chimes', reverb: 'Reverb' };
+function mixSync() {
+  for (const k of Object.keys(LEVEL)) { $('#mx_' + k).value = Math.round(LEVEL[k] * 100); $('#mv_' + k).textContent = Math.round(LEVEL[k] * 100) + '%'; }
+}
+$('#mixRows').innerHTML = Object.keys(LEVEL).map(k =>
+  `<div class="mrow"><span>${MIX_NAMES[k]}</span><input type="range" id="mx_${k}" min="0" max="300" step="5"><b id="mv_${k}"></b></div>`).join('');
+for (const k of Object.keys(LEVEL)) $('#mx_' + k).oninput = e => { setLevel(k, e.target.value / 100); mixSync(); };
+$('#mixBtn').onclick = () => { const hid = $('#mix').classList.toggle('hidden'); $('#mixBtn').classList.toggle('on', !hid); };
+$('#mixReset').onclick = () => { for (const k of Object.keys(LEVEL)) setLevel(k, 1); mixSync(); };
+mixSync();
+// ---------- sharing ----------
+// The garden is written into the address bar as #g=..., so the link itself is the save file.
+// settings ~ machine ~ machine ...; every field is a small whole number, joined with dots.
+function encodeGarden() {
+  const head = [S.bpm, mod(SHIFT, RINGS.length), S.theme === 'paper' ? 1 : 0, S.journey ? 1 : 0, S.rain ? 1 : 0, S.memory];
+  const ms = ENG.filter(e => !e.dying).map(e => [VOICE_ORDER.indexOf(e.voice), RINGS.indexOf(e.cfg.ring), e.cfg.count, e.sym, PACES.indexOf(e.hpb),
+    Math.round(e.p0 * 100), Math.round(e.pAmp * 100), e.spin + 10, Math.round(e.sizeF * 100), Math.round(e.hx / W * 1000), Math.round(e.hy / H * 1000),
+    e.note.root, e.palIx, e.cfg.gears.map(g => g.teeth + (g.out ? 'o' : 'i')).join('')].join('.'));
+  return '#g=' + [head.join('.'), ...ms].join('~');
+}
+function decodeGarden(hash) {
+  const m = /[#&]g=([0-9a-z.~]+)/.exec(hash || '');
+  if (!m) return false;
+  const parts = m[1].split('~'), h = parts[0].split('.').map(Number), int = (v, lo, hi, d) => Number.isFinite(v) ? clamp(Math.round(v), lo, hi) : d;
+  const designs = [];
+  for (const p of parts.slice(1, 11)) {
+    const f = p.split('.'), n = f.slice(0, 13).map(Number), gears = [...(f[13] || '').matchAll(/(\d+)([io])/g)].map(g => ({ teeth: int(+g[1], 3, 200, 12), out: g[2] === 'o' }));
+    if (f.length < 14 || gears.length < 3 || n.some(v => !Number.isFinite(v))) continue;
+    designs.push({ d: { voice: VOICE_ORDER[int(n[0], 0, 5, 0)], ring: RINGS[int(n[1], 0, RINGS.length - 1, 0)], count: int(n[2], 1, 3, 1), sym: int(n[3], 1, 3, 1),
+      pace: PACES[int(n[4], 0, PACES.length - 1, 3)], pen: int(n[5], 5, 145, 80) / 100, wobble: int(n[6], 0, 40, 20) / 100, spin: int(n[7], 0, 20, 10) - 10,
+      size: int(n[8], 8, 32, 18) / 100, gears: gears.slice(0, 3) }, x: int(n[9], 0, 1000, 500) / 1000, y: int(n[10], 0, 1000, 500) / 1000, root: int(n[11], 0, 4, 0), pal: int(n[12], 0, 1, 0) });
+  }
+  for (const e of ENG) { e.stopDrone(); e.dying = true; e.env = Math.min(e.env, 0.2); }
+  motes.length = 0; GAME.seeds = 0;
+  SHIFT = int(h[1], 0, RINGS.length - 1, 0); fillRings();
+  if ((h[2] === 1) !== (S.theme === 'paper')) toggleTheme(); else paintBg();
+  S.journey = h[3] === 1; $('#journey').classList.toggle('on', S.journey);
+  if ((h[4] !== 0) !== S.rain) toggleRain();
+  S.memory = int(h[5], 0, 100, 75); $('#mem').value = S.memory;
+  setBpm(int(h[0], 50, 110, 76)); $('#tempo').value = S.bpm;
+  for (const g of designs) {
+    const e = plant(g.x * W, g.y * H, g.d, true);
+    if (e) { e.note.root = g.root; e.palIx = g.pal; e.setPal(); }
+  }
+  syncTop(); voteMood(true); hud();
+  return true;
+}
+let lastHash = '';
+function writeHash() {
+  if (!started) return;                             // leave the address alone until the garden is up
+  const h = encodeGarden();
+  if (h === lastHash) return;
+  lastHash = h;
+  try { history.replaceState(null, '', h); } catch (err) { try { location.replace(h); } catch (e2) {} }
+}
+let started = false;
+setInterval(writeHash, 700);
+addEventListener('hashchange', () => { if (location.hash !== lastHash && decodeGarden(location.hash)) { lastHash = location.hash; toast('Garden loaded from link'); } });
+$('#share').onclick = () => {
+  writeHash();
+  const url = location.href, ok = () => toast('Link copied · it reopens this garden'), no = () => toast('Copy the address bar: it holds this garden');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok, no); else no();
+};
+$('#snd').onclick = toggleSound;
+$('#rain').onclick = toggleRain;
+$('#gears').onclick = toggleGears;
+$('#journey').onclick = toggleJourney;
+$('#theme').onclick = toggleTheme;
+$('#wipe').onclick = paintBg;
+$('#empty').onclick = clearGarden;
+$('#save').onclick = save;
+for (const b of document.querySelectorAll('#bar button, #top button')) b.addEventListener('pointerdown', interacted);
+
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.target.tagName === 'SELECT') return;
+  const k = e.key.toLowerCase();
+  if (k === ' ') { e.preventDefault(); S.paused = !S.paused; }
+  else if (k === 'm') toggleSound();
+  else if (k === 'g') toggleGears();
+  else if (k === 't') toggleTheme();
+  else if (k === 'r') roll(true);
+  else if (k === 's') save();
+  else if (k === 'c') paintBg();
+  else if (k === 'h') {
+    const hid = $('#bar').classList.toggle('hidden');
+    $('#top').classList.toggle('hidden', hid); $('#hud').style.opacity = hid ? 0 : ''; if (hid) $('#mix').classList.add('hidden');
+  }
+  else if ((k === 'delete' || k === 'backspace') && hover) { uproot(hover); hover = null; }
+  else if (k >= '1' && k <= '6' && hover) {     // quick voice change on the machine under the pointer
+    const v = VOICE_ORDER[+k - 1];
+    if (v !== 'pad') hover.stopDrone();
+    hover.voice = v; hover.G = geometry(hover.cfg, shapeOf(v)); hover.fit(); hover.measure(); hover.flash = 1; hover.labelAt = performance.now(); flourish(hover, [0, 4]);
+  }
+});
+document.addEventListener('visibilitychange', setMaster);
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(resize, 150); });
+
+// Dropdowns are built here rather than left to the browser: a native menu is a separate window, and
+// after it closed the first click on the board went to getting the page's attention back instead of planting.
+const MENU_SYNC = [];
+function syncMenus() { for (const f of MENU_SYNC) f(); }
+function closeMenus() { for (const d of document.querySelectorAll('.dd.open')) d.classList.remove('open'); }
+for (const sel of document.querySelectorAll('select')) {
+  const wrap = document.createElement('span'), btn = document.createElement('button'), list = document.createElement('div');
+  wrap.className = 'dd' + (sel.closest('#bar') ? ' up' : ''); list.className = 'ddList'; btn.title = sel.title; btn.type = 'button';
+  sel.parentNode.insertBefore(wrap, sel); wrap.append(btn, list, sel);
+  const sync = () => { const o = sel.options[sel.selectedIndex]; btn.textContent = o ? o.textContent : ''; };
+  btn.addEventListener('click', e => {
+    e.preventDefault(); interacted();
+    const open = !wrap.classList.contains('open');
+    closeMenus();
+    if (!open) return;
+    list.innerHTML = '';
+    for (const o of sel.options) {
+      if (o.value === '') continue;                 // a placeholder is a label, not a choice
+      const it = document.createElement('div');
+      it.textContent = o.textContent; it.dataset.v = o.value; if (o.selected) it.className = 'sel';
+      list.append(it);
+    }
+    wrap.classList.add('open');
+  });
+  list.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    const v = e.target.dataset && e.target.dataset.v;
+    if (v == null) return;
+    closeMenus();
+    sel.value = v; sel.dispatchEvent(new Event('change'));
+    sync();
+  });
+  sel.addEventListener('change', sync);
+  MENU_SYNC.push(sync); sync();
+}
+// a click anywhere else only closes an open menu
+document.addEventListener('pointerdown', e => {
+  if (!document.querySelector('.dd.open') || (e.target.closest && e.target.closest('.dd.open'))) return;
+  closeMenus(); e.stopPropagation(); e.preventDefault();
+}, true);
+addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
+
+resize();
+let fromLink = false;
+try { fromLink = decodeGarden(location.hash); } catch (err) { fromLink = false; }
+if (!fromLink) for (let i = 0; i < 3; i++) { roll(false); const [x, y] = bestSpot(); plant(x, y, D, true); }   // a starter trio: kalimba, bass, pad
+roll(false);
+started = true;
+hud();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

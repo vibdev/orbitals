@@ -1,0 +1,1 @@
+{ "name": "orbitals-tools", "private": true, "description": "Dev rig for Orbitals: record, measure and read back the music", "dependencies": { "puppeteer-core": "^24.0.0" } }
