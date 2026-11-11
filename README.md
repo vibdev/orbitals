@@ -51,11 +51,12 @@ It will be served at `https://<your-user>.github.io/orbitals/`. Update the links
 
 ### Where things are in `index.html`
 
-The script is in sections marked `// ---------- name ----------`, in this order:
+The script is in sections marked `// ---------- name ----------`. The ones that matter most:
 
-- **settings and audio**: `S` (garden settings), the mixer (`MIX`, `LEVEL`, `RAIN`), reverb, delay, and `SYN`, the synth for every sound.
-- **transport**: the beat clock locked to the audio clock (`beatPos`, `slotBeat`, `when`, `at`).
+- **settings**: `S`, the garden-wide settings.
 - **harmony**: `MOODS`, `RINGS`, `moodOfRing`, `chordAt`, `voteMood`.
+- **transport**: the beat clock locked to the audio clock (`beatPos`, `slotBeat`, `when`, `at`).
+- **audio**: the mixer (`MIX`, `LEVEL`, `RAIN`), reverb, delay, and `SYN`, the synth for every sound.
 - **voices**: `VOICES` (per-instrument timing), `SHAPES` (gear outline per instrument), `noteFor` (angle to pitch).
 - **gear geometry**: `geometry(cfg, shape)` and `penXY(G, t, pen, rot)`. All drawing and all music read the pen from here.
 - **machines**: `class Machine`. `measure()` tunes the gears to the tempo, `listen()` looks ahead for pen swings, `trigger()` turns one into a note on the beat grid, `draw()` inks it.
